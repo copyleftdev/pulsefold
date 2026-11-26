@@ -32,17 +32,6 @@ In the browser, choose **First failure** in **Stale index** mode, then choose **
 
 Pulsefold is a companion experiment and debugger. [Canary Lab](https://github.com/copyleftdev/canary-article) remains the source for the existing study and its frozen cohorts. The merged [offline fixture](https://github.com/copyleftdev/canary-article/pull/2) and [room-index discussion](https://github.com/copyleftdev/canary-article/issues/3) provide context, not evidence that Pulsefold validates or replaces those studies. GnomeMan4201 proposed the room-index turn and contributed Canary Lab’s offline scorer; [SimTigerBeetle](https://tigerbeetle.com/blog/2023-07-11-we-put-a-distributed-database-in-the-browser/) inspired the playable replay approach.
 
-## Create the private GitHub repository
+## License
 
-Extract the ZIP, then from the new `pulsefold/` folder:
-
-```sh
-git init -b main
-git add .
-git diff --cached --stat
-git commit -m "Initialize Pulsefold Ghost Cycle experiment"
-gh repo create copyleftdev/pulsefold --private --source=. --remote=origin --push
-gh repo view copyleftdev/pulsefold --json visibility,url
-```
-
-Use an already authenticated GitHub CLI on your own computer and confirm that it is signed in as `copyleftdev`. Stop if the repo already exists or GitHub shows a different owner or visibility. The ZIP does not include a Git remote, hosting credentials, or Site deployment settings. Leave the repo private and don’t post links or comments until the experimental scope is settled.
+[MIT](LICENSE), the same as Canary Lab.
