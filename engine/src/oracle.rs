@@ -1,6 +1,6 @@
 //! One checked operation: the implementation and the reference take the same step, then
 //! every black-box observable is compared. Sessions and the simulator share this.
-use crate::model::{format_bookings, format_rooms, Bookings, Op, Outcome, Tick, Window};
+use crate::model::{format_bookings, format_rooms, Bookings, Entries, Op, Outcome, Tick, Window};
 use crate::stores::{Reference, Store};
 
 /// Availability answered by the reference and by the implementation in one probe window.
@@ -19,7 +19,7 @@ pub struct Step {
     /// The reference's bookings after the step.
     pub ledger: Bookings,
     /// What the implementation answers availability from after the step.
-    pub index: Bookings,
+    pub index: Entries,
     /// The moved booking's slot before the operation, probed after it.
     pub original: Option<Probe>,
     /// The requested or attempted window, probed after the operation.
@@ -31,6 +31,15 @@ impl Step {
     pub fn passed(&self) -> bool {
         self.reasons.is_empty()
     }
+}
+
+/// How much availability the oracle probes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    /// The original and attempted windows, plus the sweep when both agree.
+    Full,
+    /// Only the original and attempted windows (for measuring what the sweep adds).
+    NamedOnly,
 }
 
 fn probe(reference: &Reference, store: &dyn Store, window: Window) -> Probe {
@@ -52,6 +61,10 @@ pub fn elementary(windows: impl IntoIterator<Item = Window>) -> Vec<Window> {
 /// from those sets, so for that class of bug the sweep sees every observable difference.
 /// The implementation's index is never inspected directly.
 pub fn step(reference: &mut Reference, store: &mut dyn Store, op: &Op) -> Step {
+    step_with(reference, store, op, Mode::Full)
+}
+
+pub fn step_with(reference: &mut Reference, store: &mut dyn Store, op: &Op, mode: Mode) -> Step {
     let before = match op {
         Op::Move(id, _) => reference.slot(id).map(|s| s.window),
         Op::Reserve(..) => None,
@@ -85,7 +98,7 @@ pub fn step(reference: &mut Reference, store: &mut dyn Store, op: &Op) -> Step {
             ));
         }
     }
-    if probes_agree {
+    if probes_agree && mode == Mode::Full {
         let windows = ledger.values().map(|s| s.window).chain(before).chain([attempted.window]);
         if let Some(p) = elementary(windows).into_iter().map(|w| probe(reference, store, w)).find(|p| p.reference != p.implementation) {
             reasons.push(format!(

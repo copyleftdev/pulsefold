@@ -12,7 +12,7 @@ assay ../assays/ghost.assay     # relative to the session file
 turn VARIANT REFACTOR RESPONSE
 ```
 
-- `VARIANT`: `scan` (pre-refactor: availability scans every booking), `indexed` (correct room index, read by availability), `stale-index` (planted bug: a rejected move still writes the attempted slot into the index), `rebuild` (keeps an index but answers availability from a full scan).
+- `VARIANT`: `scan` (pre-refactor: availability scans every booking), `indexed` (correct room index, read by availability), `rebuild` (keeps an index but answers availability from a full scan), or one of the planted bugs in [the catalog](SIMULATION.md#planted-bug-catalog): `stale-index`, `leftover-entry`, `closed-interval`, `wrong-bucket`, `index-before-check`, `no-self-exclusion`.
 - `REFACTOR`: the reviewers' observation, recorded and never computed: `used`, `not_used`, `no_evidence`, `n/a`.
 - `RESPONSE`: the rest of the line, with `\n`, `\r`, `\t` and `\\` escapes, or `<unobserved>` when no response was captured. Lines that start with `#` are comments; a `#` inside a response is text.
 
@@ -31,7 +31,7 @@ UTF-8 TSV, one row per operation per turn, with exactly this header:
 `turn step variant operation expected result ledger index original_window reference_original implementation_original attempted_window reference_attempted implementation_attempted marker refactor verdict reason`
 
 - `expected` is the reference's result; `result` is the implementation's.
-- `ledger` is the reference's booking list. `index` is what the implementation answers availability from: its room index for `indexed` and `stale-index`, its ledger for `scan` and `rebuild`. Bookings are written `A@C1:600-660`, space-separated, or `none`.
+- `ledger` is the reference's booking list. `index` is what the implementation answers availability from: its room index entries for the indexed variants (an ID can repeat, and each entry shows the chamber list it is filed in), its ledger for `scan` and `rebuild`. Bookings are written `A@C1:600-660`, space-separated, or `none`.
 - The probe windows come from the operation. `original_window` is the moved booking's slot before the operation (`-` for reserves and unknown IDs); `attempted_window` is the requested or attempted window. Both are probed after the operation, by the reference and by the implementation. Availability is `C1`, `C2`, `C1,C2` or `none`.
 - `marker` is `EXACT`, `ABSENT`, `MALFORMED` or `UNOBSERVED`, scored from the turn's response by a port of Canary Lab's `score_marker`. It never reads scheduler state.
 - `verdict` is `PASS` when the result, the booking list and both probes match the reference, and, when the two probes agree, a sweep over every interval between consecutive endpoints of the reference's bookings and the operation's windows finds no disagreement either. `reason` lists each disagreement (the sweep reports its first one as `sweep window ...`), or `-` on a pass. The verdict uses only what a black-box evaluator could observe; it does not inspect the index directly.

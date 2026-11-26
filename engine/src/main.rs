@@ -5,9 +5,13 @@
 //!     pulsefold sim [--variant V] [--seed N] [--runs K] [--ops L] [--shrink-to DIR]
 //!                                  # exit 0 pass, 1 failure found, 3 weak (a sometimes-
 //!                                  # property never fired)
+//!     pulsefold catalog [--seed N] [--runs K] [--ops L]
+//!                                  # detection rates for every planted bug; exit 0 when
+//!                                  # every bug is found and no control is flagged
 //!
 //! Exit 2 for usage or input errors.
 mod assay;
+mod catalog;
 mod marker;
 mod model;
 mod oracle;
@@ -19,7 +23,8 @@ mod stores;
 use std::{env, fs, path::Path, process::ExitCode};
 
 const USAGE: &str = "usage: pulsefold trace SESSION | pulsefold summary SESSION | \
-pulsefold sim [--variant V] [--seed N] [--runs K] [--ops L] [--shrink-to DIR] \
+pulsefold sim [--variant V] [--seed N] [--runs K] [--ops L] [--shrink-to DIR] | \
+pulsefold catalog [--seed N] [--runs K] [--ops L] \
 (exit: 0 pass; 1 failure; 2 input error; 3 weak simulation)";
 
 fn load(path: &str) -> Result<(session::Session, Vec<model::Op>), String> {
@@ -77,6 +82,24 @@ fn run() -> Result<u8, String> {
     let args: Vec<_> = env::args().skip(1).collect();
     match args.as_slice() {
         [c, rest @ ..] if c == "sim" => simulate(rest),
+        [c, rest @ ..] if c == "catalog" => {
+            let (mut seed, mut runs, mut ops) = (1u64, 1000u64, 64usize);
+            let mut it = rest.iter();
+            while let Some(flag) = it.next() {
+                match flag.as_str() {
+                    "--seed" => seed = number(flag, it.next())?,
+                    "--runs" => runs = number(flag, it.next())?,
+                    "--ops" => ops = number(flag, it.next())?,
+                    _ => return Err(USAGE.into()),
+                }
+            }
+            if runs == 0 || ops == 0 || ops > 10_000 {
+                return Err(format!("--runs must be at least 1 and --ops between 1 and 10000\n{USAGE}"));
+            }
+            let c = catalog::catalog(seed, runs, ops);
+            print!("{c}");
+            Ok(if c.sound() { 0 } else { 1 })
+        }
         [c, path] if c == "trace" || c == "summary" => {
             let (s, ops) = load(path)?;
             let rows = session::replay(&s, &ops);

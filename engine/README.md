@@ -25,7 +25,11 @@ Seeded simulation, with shrinking to a replayable assay ([guide](../docs/SIMULAT
     cargo run --offline -- sim --variant stale-index --seed 1 --runs 1000 --ops 64 --shrink-to /tmp/pf
     cargo run --offline -- trace /tmp/pf/seed-2.session
 
-Exit codes: 0 when every row matches the reference, 1 when any row fails, 2 for usage or input errors; `sim` also exits 3 when nothing failed but a sometimes-property never fired. A correct `CONFLICT` passes: the reference rejects the same move and nothing observable changes.
+Planted-bug catalog, with detection rates and Wilson intervals:
+
+    cargo run --release --offline -- catalog --runs 1000 --ops 64
+
+Exit codes: 0 when every row matches the reference, 1 when any row fails, 2 for usage or input errors; `sim` also exits 3 when nothing failed but a sometimes-property never fired; `catalog` exits 1 unless every bug is found and no control is flagged. A correct `CONFLICT` passes: the reference rejects the same move and nothing observable changes.
 
 To feed freshly generated traces to the native console:
 

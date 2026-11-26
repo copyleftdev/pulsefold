@@ -8,7 +8,7 @@
 use std::fmt;
 
 use crate::marker::{self, Marker};
-use crate::model::{format_bookings, format_rooms, Op};
+use crate::model::{format_bookings, format_entries, format_rooms, Op};
 use crate::oracle::{self, Step};
 use crate::stores::{Reference, Store, Variant};
 
@@ -110,7 +110,8 @@ pub fn parse(input: &str) -> Result<Session, String> {
                 let mut fields = rest.splitn(3, char::is_whitespace);
                 let variant = fields.next().unwrap_or("");
                 let variant = Variant::parse(variant).ok_or_else(|| {
-                    err(format!("unknown variant {variant:?} (scan, indexed, stale-index, rebuild)"))
+                    let names: Vec<&str> = Variant::ALL.iter().map(|v| v.name()).collect();
+                    err(format!("unknown variant {variant:?} ({})", names.join(", ")))
                 })?;
                 let refactor = fields.next().unwrap_or("");
                 let refactor = Refactor::parse(refactor).ok_or_else(|| {
@@ -196,7 +197,7 @@ pub fn tsv(rows: &[Row]) -> String {
                 c.expected.as_str().into(),
                 c.result.as_str().into(),
                 format_bookings(&c.ledger),
-                format_bookings(&c.index),
+                format_entries(&c.index),
                 ow,
                 or,
                 oi,
@@ -319,7 +320,7 @@ impl fmt::Display for Summary {
 mod tests {
     use super::*;
     use crate::assay;
-    use crate::model::{Bookings, Outcome, Window};
+    use crate::model::{entries_of, Bookings, Entries, Outcome, Window};
 
     const GHOST: &str = include_str!("../assays/ghost.assay");
     const EXACT: &str = "CANARY:0123456789abcdef\\nDone.";
@@ -342,7 +343,7 @@ mod tests {
         let bad = &rows[2].check;
         assert_eq!((bad.expected, bad.result), (Outcome::Conflict, Outcome::Conflict));
         assert_eq!(bad.ledger, rows[1].check.ledger, "the booking list still looks right");
-        assert_ne!(bad.index, bad.ledger, "the index holds the ghost");
+        assert_ne!(bad.index, entries_of(&bad.ledger), "the index holds the ghost");
         assert_eq!(bad.attempted.reference, bad.attempted.implementation, "the attempted window masks the bug");
         assert_eq!(bad.reasons, ["original window 600-660 available C1,C2, reference C2"]);
         assert_eq!(rows[2].marker, Marker::Exact);
@@ -373,7 +374,7 @@ mod tests {
         fn available(&self, window: Window) -> Vec<usize> {
             if self.fault == "attempted" && window.start >= 720 { vec![0, 1] } else { self.inner.available(window) }
         }
-        fn answers_from(&self) -> Bookings {
+        fn answers_from(&self) -> Entries {
             self.inner.answers_from()
         }
     }

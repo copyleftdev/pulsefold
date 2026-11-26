@@ -1,0 +1,12 @@
+# seeds 1..=200, 48 operations each; rates are per seed, ci95 is Wilson
+variant	kind	detected	rate	ci95	median_op	p90_op	named_only	named_only_median_op	shrunk_ops	first_check
+scan	control	0/200	0.000	0.000-0.019	-	-	0/200	-	-	-
+indexed	control	0/200	0.000	0.000-0.019	-	-	0/200	-	-	-
+rebuild	control	0/200	0.000	0.000-0.019	-	-	0/200	-	-	-
+stale-index	bug	162/200	0.810	0.750-0.858	19	37	157/200	21	3	original_window=132,sweep_window=30
+leftover-entry	bug	200/200	1.000	0.981-1.000	8	20	197/200	9	2	original_window=136,sweep_window=64
+closed-interval	bug	200/200	1.000	0.981-1.000	3	10	200/200	8	2	attempted_window=39,original_window=3,sweep_window=158
+wrong-bucket	bug	188/200	0.940	0.898-0.965	3	16	188/200	3	1	attempted_window=188
+index-before-check	bug	200/200	1.000	0.981-1.000	6	21	199/200	7	2	attempted_window=121,original_window=6,sweep_window=73
+no-self-exclusion	bug	184/200	0.920	0.874-0.950	13	32	184/200	13	2	result=184
+result	sound: every bug found, no control flagged

@@ -53,6 +53,45 @@ Measured with `pulsefold sim --variant stale-index --seed 1 --runs 1000 --ops 64
 
 All three correct variants (`scan`, `indexed`, `rebuild`) pass 1000 seeds with every sometimes-property reached.
 
+## Planted-bug catalog
+
+    pulsefold catalog [--seed N] [--runs K] [--ops L]     # defaults: 1, 1000, 64
+
+Each row runs the same seeds against one implementation. Exit 0 means every bug was found at least once and no correct implementation (control) was ever flagged.
+
+| Variant | Kind | What it gets wrong | Minimal witness |
+|---|---|---|---|
+| `scan`, `indexed`, `rebuild` | control | nothing | |
+| `stale-index` | bug | a rejected move still writes the attempted slot into the index | 3 ops |
+| `leftover-entry` | bug | a valid move adds the new index entry but leaves the old one | 2 ops |
+| `closed-interval` | bug | index lookups treat touching intervals as overlapping | 2 ops |
+| `wrong-bucket` | bug | every booking is filed under the first chamber's index list | 1 op |
+| `index-before-check` | bug | a reserve writes the index before the duplicate and conflict checks | 2 ops |
+| `no-self-exclusion` | bug | a move conflicts with the booking's own current slot (not index-related; a contrast) | 2 ops |
+
+The index is a list of entries per chamber, as agent code usually writes it, so a leftover or misfiled entry can exist instead of being silently overwritten. Each bug has a hand-written minimal witness in the tests that fails on it and passes on `indexed`.
+
+Measured with `pulsefold catalog --runs 1000 --ops 64` (rates per seed; 95% Wilson intervals; "op" is the operation number of the first failure):
+
+| Variant | Detected | 95% CI | Median op | p90 op | Named probes only | Median op, named only | Shrunk | First check |
+|---|---|---|---|---|---|---|---|---|
+| `scan` | 0/1000 | 0.000–0.004 | – | – | 0/1000 | – | – | – |
+| `indexed` | 0/1000 | 0.000–0.004 | – | – | 0/1000 | – | – | – |
+| `rebuild` | 0/1000 | 0.000–0.004 | – | – | 0/1000 | – | – | – |
+| `stale-index` | 859/1000 | 0.836–0.879 | 20 | 43 | 850/1000 | 21 | 3 | original 691, sweep 168 |
+| `leftover-entry` | 999/1000 | 0.994–1.000 | 8 | 19 | 998/1000 | 9 | 2 | original 701, sweep 298 |
+| `closed-interval` | 1000/1000 | 0.996–1.000 | 3 | 7 | 999/1000 | 8 | 2 | sweep 835, attempted 150, original 15 |
+| `wrong-bucket` | 943/1000 | 0.927–0.956 | 3 | 16 | 943/1000 | 3 | 1 | attempted 943 |
+| `index-before-check` | 1000/1000 | 0.996–1.000 | 6 | 19 | 1000/1000 | 7 | 2 | attempted 621, sweep 358, original 21 |
+| `no-self-exclusion` | 967/1000 | 0.954–0.976 | 14 | 36 | 967/1000 | 14 | 2 | result 967 |
+
+What the table supports:
+
+- **No false positives:** 0 of 3000 control runs flagged; each control's 95% upper bound is 0.4%.
+- **Misses are coverage, not blindness, where tested.** For `wrong-bucket` and `no-self-exclusion`, a test checks all 1000 seeds: a seed is detected exactly when the generator triggered the bug (an accepted reserve in C2; a move overlapping its own slot that the reference accepts). The 141 `stale-index` misses are seeds with no observable stale write or with one still latent when the run ended; the tests do not separate those two.
+- **The sweep mostly buys speed.** With only the two named windows, almost the same seeds are caught eventually (850 vs 859 for `stale-index`), because latent damage surfaces later. The clearest gain is `closed-interval`: median first detection at operation 3 with the sweep, 8 without. A test checks per seed that the full oracle never detects later than the named-only one.
+- These are rates for this generator, run length and swarm, not for agent-written code.
+
 ## Limits
 
-The sweep only probes endpoints taken from the reference and the operation. That is complete for stale index entries, whose endpoints always come from those sets; an implementation that invents new endpoints could slip between probes. There is one planted bug, one process, and no concurrency yet. Results describe this simulator, not agents.
+The sweep only probes endpoints taken from the reference and the operation. That is complete for stale index entries, whose endpoints always come from those sets; an implementation that invents new endpoints could slip between probes. There are six planted bugs, one process, and no concurrency yet. Results describe this simulator, not agents.

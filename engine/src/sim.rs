@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use crate::model::{Op, Outcome, Slot, Tick, Window, CHAMBERS};
-use crate::oracle::{self, elementary, Step};
+use crate::oracle::{self, elementary, Mode, Step};
 use crate::rng::Rng;
 use crate::stores::{Reference, Store, Variant};
 
@@ -210,13 +210,17 @@ pub struct Run {
 }
 
 pub fn run_ops(variant: Variant, ops: &[Op]) -> Run {
+    run_ops_with(variant, ops, Mode::Full)
+}
+
+pub fn run_ops_with(variant: Variant, ops: &[Op], mode: Mode) -> Run {
     let mut reference = Reference::default();
     let mut store: Box<dyn Store> = variant.build();
     let mut history = History::default();
     let mut run = Run { checked: 0, failure: None, hits: BTreeMap::new() };
     for (i, op) in ops.iter().enumerate() {
         let before = reference.clone();
-        let s = oracle::step(&mut reference, store.as_mut(), op);
+        let s = oracle::step_with(&mut reference, store.as_mut(), op, mode);
         run.checked += 1;
         for p in observe(&before, &s, &mut history) {
             *run.hits.entry(p).or_default() += 1;
@@ -387,7 +391,7 @@ impl Report {
 }
 
 /// The first check that reported a failing step.
-fn detector(step: &Step) -> &'static str {
+pub fn detector(step: &Step) -> &'static str {
     let first = step.reasons.first().map(String::as_str).unwrap_or("");
     ["result", "bookings", "original window", "attempted window", "sweep window"]
         .into_iter()
@@ -491,7 +495,7 @@ mod tests {
         let mut h: u64 = 0xCBF2_9CE4_8422_2325;
         for seed in 1..=100 {
             for op in generate(seed, 64).1 {
-                for b in op.to_string().bytes().chain([b'\n']) {
+                for b in op.to_string().bytes().chain(*b"\n") {
                     h = (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01B3);
                 }
             }

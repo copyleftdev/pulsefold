@@ -2,7 +2,7 @@
 //!
 //! The reference is deliberately written differently from the implementations
 //! (a flat list scanned on every query) so a shared bug cannot hide in shared code.
-use crate::model::{Bookings, Op, Outcome, Slot, Window, CHAMBERS};
+use crate::model::{entries_of, sort_entries, Bookings, Entries, Op, Outcome, Slot, Window, CHAMBERS};
 
 pub trait Store {
     fn reserve(&mut self, id: &str, slot: Slot) -> Outcome;
@@ -12,7 +12,7 @@ pub trait Store {
     /// Free chambers in `window`, ascending.
     fn available(&self, window: Window) -> Vec<usize>;
     /// The structure availability is answered from (the room index, when one is read).
-    fn answers_from(&self) -> Bookings;
+    fn answers_from(&self) -> Entries;
 
     fn apply(&mut self, op: &Op) -> Outcome {
         match op {
@@ -67,33 +67,59 @@ impl Store for Reference {
             .collect()
     }
 
-    fn answers_from(&self) -> Bookings {
-        self.bookings()
+    fn answers_from(&self) -> Entries {
+        entries_of(&self.bookings())
     }
 }
 
-/// The implementation a turn ships. Only `Indexed` is a correct, adopted refactor.
+/// The implementation a turn ships. `Scan`, `Indexed` and `Rebuild` are correct; the rest
+/// are planted bugs an agent could plausibly write during the room-index refactor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Variant {
     /// Pre-refactor: availability scans every booking.
     Scan,
     /// Room-keyed index maintained on every accepted write and read by availability.
     Indexed,
-    /// Planted bug: a rejected move still writes the attempted slot into the index.
-    StaleIndex,
-    /// Keeps an index but rebuilds availability from a full scan; correct, but not adoption.
+    /// Keeps an index but answers availability from a full scan; correct, but not adoption.
     Rebuild,
+    /// A rejected move still writes the attempted slot into the index.
+    StaleIndex,
+    /// A valid move adds the new index entry but leaves the old one behind.
+    LeftoverEntry,
+    /// Index lookups treat touching intervals as overlapping (`<=` instead of `<`).
+    ClosedInterval,
+    /// Every booking is filed under the first chamber's index list.
+    WrongBucket,
+    /// A reserve writes the index before the duplicate and conflict checks.
+    IndexBeforeCheck,
+    /// A move conflicts with the booking's own current slot.
+    NoSelfExclusion,
 }
 
 impl Variant {
-    pub const ALL: [Variant; 4] = [Variant::Scan, Variant::Indexed, Variant::StaleIndex, Variant::Rebuild];
+    pub const ALL: [Variant; 9] = [
+        Variant::Scan,
+        Variant::Indexed,
+        Variant::Rebuild,
+        Variant::StaleIndex,
+        Variant::LeftoverEntry,
+        Variant::ClosedInterval,
+        Variant::WrongBucket,
+        Variant::IndexBeforeCheck,
+        Variant::NoSelfExclusion,
+    ];
 
     pub fn name(self) -> &'static str {
         match self {
             Variant::Scan => "scan",
             Variant::Indexed => "indexed",
-            Variant::StaleIndex => "stale-index",
             Variant::Rebuild => "rebuild",
+            Variant::StaleIndex => "stale-index",
+            Variant::LeftoverEntry => "leftover-entry",
+            Variant::ClosedInterval => "closed-interval",
+            Variant::WrongBucket => "wrong-bucket",
+            Variant::IndexBeforeCheck => "index-before-check",
+            Variant::NoSelfExclusion => "no-self-exclusion",
         }
     }
 
@@ -101,10 +127,15 @@ impl Variant {
         Self::ALL.into_iter().find(|v| v.name() == name)
     }
 
+    /// Whether this variant is a correct implementation (a control in the catalog).
+    pub fn correct(self) -> bool {
+        matches!(self, Variant::Scan | Variant::Indexed | Variant::Rebuild)
+    }
+
     pub fn build(self) -> Box<dyn Store> {
         match self {
             Variant::Scan => Box::new(Scan::default()),
-            _ => Box::new(Indexed { variant: self, ..Indexed::default() }),
+            _ => Box::new(Indexed { variant: self, ledger: Bookings::new(), index: Default::default() }),
         }
     }
 }
@@ -152,42 +183,60 @@ impl Store for Scan {
             .collect()
     }
 
-    fn answers_from(&self) -> Bookings {
-        self.ledger.clone()
+    fn answers_from(&self) -> Entries {
+        entries_of(&self.ledger)
     }
 }
 
+/// The refactored store: a ledger plus one list of index entries per chamber.
 struct Indexed {
     variant: Variant,
     ledger: Bookings,
-    index: [Bookings; CHAMBERS],
-}
-
-impl Default for Indexed {
-    fn default() -> Self {
-        Indexed { variant: Variant::Indexed, ledger: Bookings::new(), index: Default::default() }
-    }
+    index: [Vec<(String, Slot)>; CHAMBERS],
 }
 
 impl Indexed {
-    fn put(&mut self, id: &str, slot: Slot) {
-        // Moves keep their chamber today; removing first keeps the index right if that changes.
-        if let Some(old) = self.ledger.insert(id.into(), slot) {
-            self.index[old.chamber].remove(id);
+    fn unindex(&mut self, id: &str) {
+        for room in &mut self.index {
+            room.retain(|(k, _)| k != id);
         }
-        self.index[slot.chamber].insert(id.into(), slot);
+    }
+
+    fn index_put(&mut self, id: &str, slot: Slot) {
+        let room = if self.variant == Variant::WrongBucket { 0 } else { slot.chamber };
+        self.index[room].push((id.into(), slot));
+    }
+
+    fn busy(&self, chamber: usize, window: Window) -> bool {
+        match self.variant {
+            Variant::Rebuild => {
+                // Rebuilds the room's bookings from the whole ledger on every lookup.
+                let room: Vec<Slot> = self.ledger.values().filter(|s| s.chamber == chamber).copied().collect();
+                room.iter().any(|s| s.window.overlaps(window))
+            }
+            Variant::ClosedInterval => {
+                self.index[chamber].iter().any(|(_, s)| s.window.start <= window.end && window.start <= s.window.end)
+            }
+            _ => self.index[chamber].iter().any(|(_, s)| s.window.overlaps(window)),
+        }
     }
 }
 
 impl Store for Indexed {
     fn reserve(&mut self, id: &str, slot: Slot) -> Outcome {
+        if self.variant == Variant::IndexBeforeCheck {
+            self.index_put(id, slot);
+        }
         if self.ledger.contains_key(id) {
             return Outcome::Duplicate;
         }
         if conflicts(&self.ledger, slot, None) {
             return Outcome::Conflict;
         }
-        self.put(id, slot);
+        self.ledger.insert(id.into(), slot);
+        if self.variant != Variant::IndexBeforeCheck {
+            self.index_put(id, slot);
+        }
         Outcome::Ok
     }
 
@@ -196,13 +245,19 @@ impl Store for Indexed {
             return Outcome::NotFound;
         };
         let slot = Slot { chamber: old.chamber, window };
-        if conflicts(&self.ledger, slot, Some(id)) {
+        let exclude = if self.variant == Variant::NoSelfExclusion { None } else { Some(id) };
+        if conflicts(&self.ledger, slot, exclude) {
             if self.variant == Variant::StaleIndex {
-                self.index[slot.chamber].insert(id.into(), slot);
+                self.unindex(id);
+                self.index_put(id, slot);
             }
             return Outcome::Conflict;
         }
-        self.put(id, slot);
+        self.ledger.insert(id.into(), slot);
+        if self.variant != Variant::LeftoverEntry {
+            self.unindex(id);
+        }
+        self.index_put(id, slot);
         Outcome::Ok
     }
 
@@ -211,25 +266,18 @@ impl Store for Indexed {
     }
 
     fn available(&self, window: Window) -> Vec<usize> {
-        (0..CHAMBERS)
-            .filter(|&c| {
-                let busy = if self.variant == Variant::Rebuild {
-                    // Rebuilds the room's bookings from the whole ledger on every lookup.
-                    let room: Vec<Slot> = self.ledger.values().filter(|s| s.chamber == c).copied().collect();
-                    room.iter().any(|s| s.window.overlaps(window))
-                } else {
-                    self.index[c].values().any(|s| s.window.overlaps(window))
-                };
-                !busy
-            })
-            .collect()
+        (0..CHAMBERS).filter(|&c| !self.busy(c, window)).collect()
     }
 
-    fn answers_from(&self) -> Bookings {
+    fn answers_from(&self) -> Entries {
         if self.variant == Variant::Rebuild {
-            return self.ledger.clone();
+            return entries_of(&self.ledger);
         }
-        self.index.iter().flat_map(|m| m.iter()).map(|(k, v)| (k.clone(), *v)).collect()
+        // Report each entry under the chamber list it is filed in, so a wrong bucket shows.
+        let filed = self.index.iter().enumerate().flat_map(|(room, list)| {
+            list.iter().map(move |(k, s)| (k.clone(), Slot { chamber: room, window: s.window }))
+        });
+        sort_entries(filed.collect())
     }
 }
 
@@ -258,12 +306,23 @@ mod tests {
 
     #[test]
     fn rebuild_never_reads_the_index() {
-        let mut s = Indexed { variant: Variant::Rebuild, ..Indexed::default() };
+        let mut s = Indexed { variant: Variant::Rebuild, ledger: Bookings::new(), index: Default::default() };
         s.reserve("A", slot(0, 600, 660));
         s.index[0].clear();
-        s.index[1].insert("X".into(), slot(1, 600, 660));
+        s.index[1].push(("X".into(), slot(1, 600, 660)));
         assert_eq!(s.available(Window { start: 600, end: 660 }), vec![1]);
-        assert_eq!(s.answers_from(), s.bookings());
+        assert_eq!(s.answers_from(), entries_of(&s.bookings()));
+    }
+
+    #[test]
+    fn index_view_shows_where_entries_are_filed() {
+        let mut s = Variant::WrongBucket.build();
+        s.reserve("A", slot(1, 600, 660));
+        assert_eq!(s.answers_from(), vec![("A".to_string(), slot(0, 600, 660))], "filed under C1");
+        let mut s = Variant::LeftoverEntry.build();
+        s.reserve("A", slot(0, 600, 660));
+        s.reschedule("A", Window { start: 700, end: 760 });
+        assert_eq!(s.answers_from().len(), 2, "the old entry is still there");
     }
 
     #[test]
@@ -271,7 +330,7 @@ mod tests {
         let mut s = Variant::Indexed.build();
         s.reserve("A", slot(0, 600, 660));
         assert_eq!(s.reschedule("A", Window { start: 700, end: 760 }), Outcome::Ok);
-        assert_eq!(s.answers_from(), s.bookings());
+        assert_eq!(s.answers_from(), entries_of(&s.bookings()));
         assert_eq!(s.available(Window { start: 600, end: 660 }), vec![0, 1]);
     }
 }

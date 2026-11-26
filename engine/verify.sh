@@ -40,6 +40,10 @@ cmp "$out/sim.txt" sim/weak.expected
 for v in scan rebuild; do expect 0 "$bin" sim --variant "$v" --seed 1 --runs 200 --ops 48; done
 expect 2 "$bin" sim --runs 0
 
+# Planted-bug catalog: every bug found, no control flagged, numbers unchanged.
+expect 0 "$bin" catalog --seed 1 --runs 200 --ops 48
+cmp "$out/sim.txt" sim/catalog.expected
+
 if command -v godot >/dev/null 2>&1; then
   godot --headless --path viewer -- --validate "--control=$out/control.tsv" "--mutant=$out/mutant.tsv"
 elif command -v godot4 >/dev/null 2>&1; then

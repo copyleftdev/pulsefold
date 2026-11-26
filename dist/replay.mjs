@@ -5,7 +5,7 @@ export const header=['turn','step','variant','operation','expected','result','le
   'marker','refactor','verdict','reason'].join('\t');
 const slot=/^([a-z0-9_]+)@C([12]):(\d+)-(\d+)$/i;
 const OUTCOME=/^(OK|CONFLICT|DUPLICATE|NOT_FOUND)$/, ROOMS=/^(C1,C2|C1|C2|none)$/;
-const VARIANTS=['scan','indexed','stale-index','rebuild'], REFACTOR=['used','not_used','no_evidence','n/a'];
+const VARIANTS=['scan','indexed','rebuild','stale-index','leftover-entry','closed-interval','wrong-bucket','index-before-check','no-self-exclusion'], REFACTOR=['used','not_used','no_evidence','n/a'];
 const MARKERS=['EXACT','ABSENT','MALFORMED','UNOBSERVED'];
 const span=s=>{
   const m=/^(\d+)-(\d+)$/.exec(s??'');

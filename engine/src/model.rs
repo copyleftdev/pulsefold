@@ -88,6 +88,31 @@ pub fn format_bookings(bookings: &Bookings) -> String {
         .join(" ")
 }
 
+/// Index entries as stored, possibly repeating an ID (a leftover entry) or filed under the
+/// wrong chamber. Sorted by ID, then chamber, then window, so output is stable.
+pub type Entries = Vec<(String, Slot)>;
+
+pub fn sort_entries(mut entries: Entries) -> Entries {
+    entries.sort_by(|(a, x), (b, y)| (a, x.chamber, x.window.start, x.window.end).cmp(&(b, y.chamber, y.window.start, y.window.end)));
+    entries
+}
+
+pub fn entries_of(bookings: &Bookings) -> Entries {
+    bookings.iter().map(|(k, v)| (k.clone(), *v)).collect()
+}
+
+/// `A@C1:600-660 B@C1:720-780`, or `none`; an ID can repeat.
+pub fn format_entries(entries: &Entries) -> String {
+    if entries.is_empty() {
+        return "none".into();
+    }
+    entries
+        .iter()
+        .map(|(id, s)| format!("{id}@{}:{}", chamber_name(s.chamber), s.window))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// `C1,C2`, or `none` when no chamber is free.
 pub fn format_rooms(rooms: &[usize]) -> String {
     if rooms.is_empty() {
