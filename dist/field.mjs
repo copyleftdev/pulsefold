@@ -24,7 +24,9 @@ export class Field{
     const dpr=Math.min(devicePixelRatio||1,2),w=this.canvas.clientWidth,h=this.canvas.clientHeight;
     this.canvas.width=Math.round(w*dpr);this.canvas.height=Math.round(h*dpr);this.ctx.setTransform(dpr,0,0,dpr,0,0);this.w=w;this.h=h;
   }
-  clear(){this.orbs=[];this.groups=[];this.hover=this.selected=-1;this.request()}
+  /** Empties the field; `expected` is how many universes are coming, so the grid can take its
+   *  final shape at once and each universe ignites in its permanent place. */
+  clear(expected=0){this.orbs=[];this.groups=[];this.expected=expected;this.hover=this.selected=-1;this.request()}
   /** Adds universes as they come back from the engine; each ignites in turn. */
   add(list,props){
     this.props=props;const now=performance.now();
@@ -43,12 +45,14 @@ export class Field{
     const gap=key==='seed'?0:18,head=key==='seed'?0:46,bands=values.length;
     const bw=(W-gap*(bands-1))/bands;
     // Largest cell that fits every band.
-    let c=Math.min(46,Math.floor(Math.sqrt(W*H/Math.max(1,this.orbs.length))));
-    for(;c>4;c--){if(members.every(m=>{const cols=Math.max(1,Math.floor(bw/c));return Math.ceil(m.length/cols)*c+head<=H}))break}
+    const N=Math.max(this.orbs.length,this.expected||0),seedOrder=key==='seed';
+    const sizes=members.map(m=>seedOrder?N:m.length);
+    let c=Math.min(46,Math.floor(Math.sqrt(W*H/Math.max(1,N))));
+    for(;c>4;c--){if(sizes.every(n=>{const cols=Math.max(1,Math.floor(bw/c));return Math.ceil(n/cols)*c+head<=H}))break}
     this.cell=c;
     this.groups=values.map((v,gi)=>{
       const x0=l+gi*(bw+gap),cols=Math.max(1,Math.floor(bw/c)),list=members[gi];
-      const used=Math.min(cols,list.length)*c,ox=x0+(bw-used)/2;
+      const used=Math.min(cols,seedOrder?N:list.length)*c,ox=x0+(bw-used)/2;
       list.forEach((o,k)=>{o.tx=ox+(k%cols)*c+c/2;o.ty=t+head+Math.floor(k/cols)*c+c/2;if(o.x===null){o.x=o.tx;o.y=o.ty}});
       const failing=list.filter(o=>o.failed).length;
       return {value:v,x:x0,w:bw,n:list.length,failing};

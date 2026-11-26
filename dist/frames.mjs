@@ -98,7 +98,8 @@ export function raceFrames(text){
     let caption=`${who} ${STEP_TEXT[e.step]??e.step}`;
     if(e.step==='check')caption+=`: ${e.note}`;
     if(e.step==='read')caption+=`: ${rooms(e.note)} free in ${span(...Object.values(opWindow(e.op)))}`;
-    caption+=` (${opTitle(e.op).toLowerCase()}).`;
+    const title=opTitle(e.op);
+    caption+=` (${title[0].toLowerCase()+title.slice(1)}).`;
     // A read is a probe: what it saw from the index, against the ledger at that instant.
     const probes=[];
     if(e.step==='read'){const w=opWindow(e.op),ref=freeRooms(e.ledger,w);probes.push({name:'read',...w,impl:e.note,ref,agree:ref===e.note})}

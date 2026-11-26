@@ -41,8 +41,9 @@ export function initMultiverse(game){
   setKind('sim');
 
   const margins=()=>{
-    const narrow=innerWidth<760,open=!$('mv-detail').hidden;
-    field.setMargins(narrow?{l:12,r:12,t:72,b:Math.round(innerHeight*.44)}:{l:300,r:open?348:24,t:84,b:28});
+    // The detail panel's column is always reserved on wide screens, so drilling in never moves an orb.
+    const narrow=innerWidth<760;
+    field.setMargins(narrow?{l:12,r:12,t:72,b:Math.round(innerHeight*.44)}:{l:300,r:348,t:84,b:28});
   };
   addEventListener('resize',margins);
 
@@ -65,9 +66,9 @@ export function initMultiverse(game){
   async function run(){
     if(M.running||!game.engine())return;
     M.running=true;$('mv-launch').disabled=true;$('mv-detail').hidden=true;margins();
-    field.clear();
     const kind=M.kind,variant=M.variant,count=+$('mv-count').value,props=kind==='sim'?SIM_PROPS:RACE_PROPS;
     M.ran={kind,variant,count,props,list:[]};
+    field.clear(count);
     const o=$('mv-arrange').selectedOptions[0];field.arrange(o.value,o.textContent);
     try{
       for(let first=1;first<=count;first+=25){
