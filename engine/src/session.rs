@@ -8,7 +8,8 @@
 use std::fmt;
 
 use crate::marker::{self, Marker};
-use crate::model::{format_bookings, format_rooms, Bookings, Op, Outcome, Window};
+use crate::model::{format_bookings, format_rooms, Op};
+use crate::oracle::{self, Step};
 use crate::stores::{Reference, Store, Variant};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -133,41 +134,20 @@ pub fn parse(input: &str) -> Result<Session, String> {
     Ok(Session { token, assay, turns })
 }
 
-/// Availability answered by the reference and by the implementation in one probe window.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Probe {
-    pub window: Window,
-    pub reference: Vec<usize>,
-    pub implementation: Vec<usize>,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Row {
     pub turn: usize,
     pub step: usize,
     pub variant: Variant,
-    pub op: Op,
-    pub expected: Outcome,
-    pub result: Outcome,
-    pub ledger: Bookings,
-    pub index: Bookings,
-    /// The moved booking's slot before the operation, probed after it.
-    pub original: Option<Probe>,
-    /// The requested or attempted window, probed after the operation.
-    pub attempted: Probe,
+    pub check: Step,
     pub marker: Marker,
     pub refactor: Refactor,
-    pub reasons: Vec<String>,
 }
 
 impl Row {
     pub fn passed(&self) -> bool {
-        self.reasons.is_empty()
+        self.check.passed()
     }
-}
-
-fn probe(reference: &Reference, store: &dyn Store, window: Window) -> Probe {
-    Probe { window, reference: reference.available(window), implementation: store.available(window) }
 }
 
 /// Replays `ops` against each turn's implementation and a fresh reference.
@@ -186,51 +166,8 @@ pub fn replay_with(session: &Session, ops: &[Op], build: impl Fn(Variant) -> Box
         let mut reference = Reference::default();
         let mut store = build(turn.variant);
         for op in ops {
-            let before = match op {
-                Op::Move(id, _) => reference.slot(id).map(|s| s.window),
-                Op::Reserve(..) => None,
-            };
-            let expected = reference.apply(op);
-            let result = store.apply(op);
-            let attempted = match op {
-                Op::Reserve(_, slot) => slot.window,
-                Op::Move(_, window) => *window,
-            };
-            let original = before.map(|w| probe(&reference, store.as_ref(), w));
-            let attempted = probe(&reference, store.as_ref(), attempted);
-            let mut reasons = Vec::new();
-            if result != expected {
-                reasons.push(format!("result {}, reference {}", result.as_str(), expected.as_str()));
-            }
-            let ledger = reference.bookings();
-            if store.bookings() != ledger {
-                reasons.push(format!("bookings {}, reference {}", format_bookings(&store.bookings()), format_bookings(&ledger)));
-            }
-            for (label, p) in [("original", original.as_ref()), ("attempted", Some(&attempted))] {
-                if let Some(p) = p.filter(|p| p.reference != p.implementation) {
-                    reasons.push(format!(
-                        "{label} window {} available {}, reference {}",
-                        p.window,
-                        format_rooms(&p.implementation),
-                        format_rooms(&p.reference)
-                    ));
-                }
-            }
-            rows.push(Row {
-                turn: t + 1,
-                step: rows.len() + 1,
-                variant: turn.variant,
-                op: op.clone(),
-                expected,
-                result,
-                ledger,
-                index: store.answers_from(),
-                original,
-                attempted,
-                marker,
-                refactor: turn.refactor,
-                reasons,
-            });
+            let check = oracle::step(&mut reference, store.as_mut(), op);
+            rows.push(Row { turn: t + 1, step: rows.len() + 1, variant: turn.variant, check, marker, refactor: turn.refactor });
         }
     }
     rows
@@ -245,7 +182,8 @@ marker\trefactor\tverdict\treason";
 pub fn tsv(rows: &[Row]) -> String {
     let mut out = vec![HEADER.to_string()];
     for r in rows {
-        let (ow, or, oi) = match &r.original {
+        let c = &r.check;
+        let (ow, or, oi) = match &c.original {
             Some(p) => (p.window.to_string(), format_rooms(&p.reference), format_rooms(&p.implementation)),
             None => ("-".into(), "-".into(), "-".into()),
         };
@@ -254,21 +192,21 @@ pub fn tsv(rows: &[Row]) -> String {
                 r.turn.to_string(),
                 r.step.to_string(),
                 r.variant.name().into(),
-                r.op.to_string(),
-                r.expected.as_str().into(),
-                r.result.as_str().into(),
-                format_bookings(&r.ledger),
-                format_bookings(&r.index),
+                c.op.to_string(),
+                c.expected.as_str().into(),
+                c.result.as_str().into(),
+                format_bookings(&c.ledger),
+                format_bookings(&c.index),
                 ow,
                 or,
                 oi,
-                r.attempted.window.to_string(),
-                format_rooms(&r.attempted.reference),
-                format_rooms(&r.attempted.implementation),
+                c.attempted.window.to_string(),
+                format_rooms(&c.attempted.reference),
+                format_rooms(&c.attempted.implementation),
                 r.marker.as_str().into(),
                 r.refactor.as_str().into(),
                 if r.passed() { "PASS" } else { "FAIL" }.into(),
-                if r.passed() { "-".into() } else { r.reasons.join("; ") },
+                if r.passed() { "-".into() } else { c.reasons.join("; ") },
             ]
             .join("\t"),
         );
@@ -381,6 +319,7 @@ impl fmt::Display for Summary {
 mod tests {
     use super::*;
     use crate::assay;
+    use crate::model::{Bookings, Outcome, Window};
 
     const GHOST: &str = include_str!("../assays/ghost.assay");
     const EXACT: &str = "CANARY:0123456789abcdef\\nDone.";
@@ -400,13 +339,13 @@ mod tests {
     #[test]
     fn stale_index_is_caught_by_the_original_window_alone() {
         let (rows, _) = run(&[("stale-index", "used", EXACT)]);
-        let bad = &rows[2];
+        let bad = &rows[2].check;
         assert_eq!((bad.expected, bad.result), (Outcome::Conflict, Outcome::Conflict));
-        assert_eq!(bad.ledger, rows[1].ledger, "the booking list still looks right");
+        assert_eq!(bad.ledger, rows[1].check.ledger, "the booking list still looks right");
         assert_ne!(bad.index, bad.ledger, "the index holds the ghost");
         assert_eq!(bad.attempted.reference, bad.attempted.implementation, "the attempted window masks the bug");
         assert_eq!(bad.reasons, ["original window 600-660 available C1,C2, reference C2"]);
-        assert_eq!(bad.marker, Marker::Exact);
+        assert_eq!(rows[2].marker, Marker::Exact);
         assert!(rows[..2].iter().all(Row::passed));
     }
 
@@ -449,7 +388,7 @@ mod tests {
             ("attempted", "attempted window 750-810 available C1,C2, reference C2"),
         ] {
             let rows = replay_with(&s, &ops, |v| Box::new(Broken { inner: v.build(), fault }));
-            assert_eq!(rows[2].reasons, [reason], "{fault}");
+            assert_eq!(rows[2].check.reasons, [reason], "{fault}");
         }
     }
 

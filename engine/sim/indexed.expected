@@ -1,0 +1,17 @@
+variant	indexed
+seeds	1..=200
+ops_per_seed	48
+always	agrees_with_reference	9600/9600 checked steps held
+sometimes	rejected_move	703
+sometimes	stale_write_observable	690
+sometimes	stale_write_hidden_from_named_probes	142
+sometimes	valid_move	2570
+sometimes	move_after_rejection	587
+sometimes	touching_accept	557
+sometimes	duplicate_rejected	3585
+sometimes	missing_move	1759
+sometimes	chamber_full	2344
+failing_seeds	0/200
+first_failure	-
+unreached	-
+result	pass

@@ -1,0 +1,4 @@
+# Shrunk by `pulsefold sim`: seed 2, variant stale-index, 48 -> 3 operations.
+reserve A 1 825 855
+reserve B 1 1020 1080
+move A 915 1035

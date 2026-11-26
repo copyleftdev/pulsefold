@@ -1,0 +1,17 @@
+variant	indexed
+seeds	1..=1
+ops_per_seed	1
+always	agrees_with_reference	1/1 checked steps held
+sometimes	rejected_move	0
+sometimes	stale_write_observable	0
+sometimes	stale_write_hidden_from_named_probes	0
+sometimes	valid_move	0
+sometimes	move_after_rejection	0
+sometimes	touching_accept	0
+sometimes	duplicate_rejected	0
+sometimes	missing_move	1
+sometimes	chamber_full	0
+failing_seeds	0/1
+first_failure	-
+unreached	rejected_move,stale_write_observable,stale_write_hidden_from_named_probes,valid_move,move_after_rejection,touching_accept,duplicate_rejected,chamber_full
+result	weak: no failure, but some sometimes-properties never fired

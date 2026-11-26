@@ -1,0 +1,25 @@
+variant	stale-index
+seeds	1..=200
+ops_per_seed	48
+always	agrees_with_reference	5157/5319 checked steps held
+sometimes	rejected_move	165
+sometimes	stale_write_observable	161
+sometimes	stale_write_hidden_from_named_probes	30
+sometimes	valid_move	1403
+sometimes	move_after_rejection	5
+sometimes	touching_accept	212
+sometimes	duplicate_rejected	1562
+sometimes	missing_move	1390
+sometimes	chamber_full	1000
+failing_seeds	162/200
+detected_by	original window	132
+detected_by	sweep window	30
+first_failure	seed 2 (ids=4 move=800‰ boundary=300‰ horizon=480), operation 27 of 48
+reason	original window 765-885 available C1,C2, reference C1
+shrunk	3 operations
+shrunk_op	reserve A 1 825 855
+shrunk_op	reserve B 1 1020 1080
+shrunk_op	move A 915 1035
+reproduce	pulsefold sim --variant stale-index --seed 2 --runs 1 --ops 48
+unreached	-
+result	fail

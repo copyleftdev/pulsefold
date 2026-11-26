@@ -22,7 +22,7 @@ pub trait Store {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Reference {
     rows: Vec<(String, Slot)>,
 }
