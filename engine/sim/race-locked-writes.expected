@@ -1,0 +1,14 @@
+variant	locked-writes
+kind	control
+seeds	1..=1000
+operations	6648
+sometimes	overlapping_ops	656
+sometimes	contended_write	294
+sometimes	conflict_under_contention	134
+sometimes	lock_contention	533
+sometimes	query_during_move	67
+failing_seeds	0/1000	ci95 0.000-0.004
+failing_seeds_serial	0/1000	same scenarios, no preemption inside an operation
+first_failure	-
+unreached	-
+result	pass

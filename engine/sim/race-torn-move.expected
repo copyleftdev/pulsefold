@@ -1,0 +1,21 @@
+variant	torn-move
+kind	bug
+seeds	1..=1000
+operations	6648
+sometimes	overlapping_ops	658
+sometimes	contended_write	292
+sometimes	conflict_under_contention	125
+sometimes	lock_contention	540
+sometimes	query_during_move	77
+failing_seeds	4/1000	ci95 0.002-0.010
+failing_seeds_serial	0/1000	same scenarios, no preemption inside an operation
+first_failure	seed 257 (clients=2 ops=2 setup=3 switch=100‰ query=400‰ move=600‰)
+reason	not linearizable: no order of these 7 operations that respects real time reproduces their results
+shrunk	2 clients, 3 operations, 9 scheduled steps
+shrunk_line	setup reserve C 0 600 630
+shrunk_line	client 1 query 600 750
+shrunk_line	client 2 move C 645 660
+shrunk_line	schedule 2 2 2 2 1 1 2 2 2
+reproduce	pulsefold race --variant torn-move --seed 257 --runs 1
+unreached	-
+result	fail

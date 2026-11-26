@@ -8,6 +8,10 @@
 //!     pulsefold catalog [--seed N] [--runs K] [--ops L]
 //!                                  # detection rates for every planted bug; exit 0 when
 //!                                  # every bug is found and no control is flagged
+//!     pulsefold race [--variant V] [--seed N] [--runs K] [--shrink-to DIR]
+//!     pulsefold race --replay FILE.race
+//!                                  # concurrent clients under a seeded scheduler, checked
+//!                                  # for linearizability; exits like sim
 //!
 //! Exit 2 for usage or input errors.
 mod assay;
@@ -15,6 +19,7 @@ mod catalog;
 mod marker;
 mod model;
 mod oracle;
+mod race;
 mod rng;
 mod session;
 mod sim;
@@ -24,7 +29,8 @@ use std::{env, fs, path::Path, process::ExitCode};
 
 const USAGE: &str = "usage: pulsefold trace SESSION | pulsefold summary SESSION | \
 pulsefold sim [--variant V] [--seed N] [--runs K] [--ops L] [--shrink-to DIR] | \
-pulsefold catalog [--seed N] [--runs K] [--ops L] \
+pulsefold catalog [--seed N] [--runs K] [--ops L] | \
+pulsefold race [--variant V] [--seed N] [--runs K] [--shrink-to DIR] | pulsefold race --replay FILE \
 (exit: 0 pass; 1 failure; 2 input error; 3 weak simulation)";
 
 fn load(path: &str) -> Result<(session::Session, Vec<model::Op>), String> {
@@ -82,6 +88,41 @@ fn run() -> Result<u8, String> {
     let args: Vec<_> = env::args().skip(1).collect();
     match args.as_slice() {
         [c, rest @ ..] if c == "sim" => simulate(rest),
+        [c, flag, file] if c == "race" && flag == "--replay" => {
+            let text = fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
+            let (variant, scenario) = race::parse_race(&text).map_err(|e| format!("{file}: {e}"))?;
+            print!("{}", race::narrate(variant, &scenario));
+            Ok(if race::execute(variant, &scenario, false).failure.is_some() { 1 } else { 0 })
+        }
+        [c, rest @ ..] if c == "race" => {
+            let (mut variant, mut seed, mut runs, mut out) = (race::RaceVariant::Locked, 1u64, 200u64, None);
+            let mut it = rest.iter();
+            while let Some(flag) = it.next() {
+                match flag.as_str() {
+                    "--variant" => {
+                        let name = it.next().map(String::as_str).unwrap_or("");
+                        variant = race::RaceVariant::parse(name).ok_or_else(|| format!("unknown race variant {name:?}\n{USAGE}"))?;
+                    }
+                    "--seed" => seed = number(flag, it.next())?,
+                    "--runs" => runs = number(flag, it.next())?,
+                    "--shrink-to" => out = Some(it.next().ok_or(USAGE)?.clone()),
+                    _ => return Err(USAGE.into()),
+                }
+            }
+            if runs == 0 {
+                return Err(format!("--runs must be at least 1\n{USAGE}"));
+            }
+            let report = race::simulate(variant, seed, runs);
+            print!("{report}");
+            if let (Some(dir), Some((seed, _, reason, shrunk))) = (out, &report.first) {
+                let dir = Path::new(&dir);
+                fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+                let path = dir.join(format!("race-seed-{seed}.race"));
+                let text = race::race_text(variant, shrunk, &format!("Shrunk by `pulsefold race` from seed {seed}; the unshrunk run failed with: {reason}."));
+                fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+            }
+            Ok(report.exit_code())
+        }
         [c, rest @ ..] if c == "catalog" => {
             let (mut seed, mut runs, mut ops) = (1u64, 1000u64, 64usize);
             let mut it = rest.iter();

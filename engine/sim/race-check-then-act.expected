@@ -1,0 +1,20 @@
+variant	check-then-act
+kind	bug
+seeds	1..=1000
+operations	6648
+sometimes	overlapping_ops	595
+sometimes	contended_write	286
+sometimes	conflict_under_contention	110
+sometimes	lock_contention	n/a
+sometimes	query_during_move	98
+failing_seeds	50/1000	ci95 0.038-0.065
+failing_seeds_serial	0/1000	same scenarios, no preemption inside an operation
+first_failure	seed 28 (clients=3 ops=3 setup=2 switch=500‰ query=400‰ move=300‰)
+reason	not linearizable: no order of these 11 operations that respects real time reproduces their results
+shrunk	2 clients, 2 operations, 8 scheduled steps
+shrunk_line	client 1 reserve C 1 630 660
+shrunk_line	client 2 reserve C 1 630 660
+shrunk_line	schedule 1 2 2 2 1 1 1 2
+reproduce	pulsefold race --variant check-then-act --seed 28 --runs 1
+unreached	-
+result	fail

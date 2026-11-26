@@ -44,6 +44,23 @@ expect 2 "$bin" sim --runs 0
 expect 0 "$bin" catalog --seed 1 --runs 200 --ops 48
 cmp "$out/sim.txt" sim/catalog.expected
 
+# Races: controls pass, both bugs fail only with preemption inside an operation, and the
+# shrunk interleavings replay exactly (and pass once the lock is restored).
+for v in locked locked-writes; do
+  expect 0 "$bin" race --variant "$v" --seed 1 --runs 1000
+  cmp "$out/sim.txt" "sim/race-$v.expected"
+done
+for v in check-then-act torn-move; do
+  expect 1 "$bin" race --variant "$v" --seed 1 --runs 1000 --shrink-to "$out/races"
+  cmp "$out/sim.txt" "sim/race-$v.expected"
+done
+for f in race-seed-28 race-seed-257; do
+  cmp "$out/races/$f.race" "sim/$f.race"
+  expect 1 "$bin" race --replay "sim/$f.race"
+  sed 's/^variant .*/variant locked/' "sim/$f.race" > "$out/locked.race"
+  expect 0 "$bin" race --replay "$out/locked.race"
+done
+
 if command -v godot >/dev/null 2>&1; then
   godot --headless --path viewer -- --validate "--control=$out/control.tsv" "--mutant=$out/mutant.tsv"
 elif command -v godot4 >/dev/null 2>&1; then

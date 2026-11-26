@@ -1,0 +1,5 @@
+# Pulsefold race v1. Shrunk by `pulsefold race` from seed 28; the unshrunk run failed with: not linearizable: no order of these 11 operations that respects real time reproduces their results.
+variant check-then-act
+client 1 reserve C 1 630 660
+client 2 reserve C 1 630 660
+schedule 1 2 2 2 1 1 1 2

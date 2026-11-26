@@ -94,4 +94,4 @@ What the table supports:
 
 ## Limits
 
-The sweep only probes endpoints taken from the reference and the operation. That is complete for stale index entries, whose endpoints always come from those sets; an implementation that invents new endpoints could slip between probes. There are six planted bugs, one process, and no concurrency yet. Results describe this simulator, not agents.
+The sweep only probes endpoints taken from the reference and the operation. That is complete for stale index entries, whose endpoints always come from those sets; an implementation that invents new endpoints could slip between probes. There are six planted bugs in one process here; concurrency is covered separately in [RACES.md](RACES.md). Results describe this simulator, not agents.

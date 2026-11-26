@@ -1,0 +1,6 @@
+# Pulsefold race v1. Shrunk by `pulsefold race` from seed 257; the unshrunk run failed with: not linearizable: no order of these 7 operations that respects real time reproduces their results.
+variant torn-move
+setup reserve C 0 600 630
+client 1 query 600 750
+client 2 move C 645 660
+schedule 2 2 2 2 1 1 2 2 2
