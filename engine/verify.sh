@@ -6,7 +6,8 @@ out=$(mktemp -d)
 trap 'rm -rf "$out"' EXIT HUP INT TERM
 cargo test --offline
 cargo build --offline
-bin=target/debug/pulsefold
+# Honor a relocated Cargo target directory (absolute or relative to engine/).
+bin="${CARGO_TARGET_DIR:-target}/debug/pulsefold"
 "$bin" assays/ghost.assay > "$out/control.tsv"
 code=0
 "$bin" assays/ghost.assay --stale-index > "$out/mutant.tsv" || code=$?
