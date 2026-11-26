@@ -14,6 +14,7 @@ That's the reason this project exists: a model can print the correct marker whil
 | Check the exported trace format and fixture expectations | Run `node checks.mjs` from this folder (Node 18+). |
 | Build the Rust runner and check its traces against the fixtures | Run `cd engine && ./verify.sh` (stable Rust 1.65+ and a POSIX shell). |
 | Replay a session yourself | `cd engine && cargo run --offline -- trace sessions/ghost.session` or `-- summary sessions/ghost.session`. |
+| Hunt for the bug from seeds instead of a script | `cd engine && cargo run --offline -- sim --variant stale-index --runs 1000 --ops 64 --shrink-to /tmp/pf`, then import the trace of `/tmp/pf/seed-2.session`. See [the simulation guide](docs/SIMULATION.md). |
 | Use the optional native console | Open `engine/viewer/project.godot` in Godot 4. See [native setup](engine/README.md). |
 | Pick up the next engineering task | Read [the project brief](docs/EXPERIMENT.md) and [the replay contract](docs/REPLAY.md). |
 
@@ -22,11 +23,11 @@ In the browser, choose **First failure** in **Stale index** mode, then choose **
 ## What is in this repository?
 
 - `dist/`: buildless browser console; the two runner-generated traces, presentation, and replay controls.
-- `engine/`: dependency-free Rust runner (reference, implementation variants, marker scoring, session summary), the Ghost Cycle assay, five scripted sessions with expected summaries, native Godot viewer, and a verification script.
+- `engine/`: dependency-free Rust runner (reference, implementation variants, marker scoring, session summary, seeded simulation with always/sometimes properties and shrinking), the Ghost Cycle assay, five scripted sessions with expected summaries, golden simulation reports, native Godot viewer, and a verification script.
 - `checks.mjs`: automated browser-data checks for the packaged traces.
-- `docs/`: experiment boundary, replay contract, and visual direction.
+- `docs/`: experiment boundary, replay contract, simulation guide, and visual direction.
 
-**Verified so far (2026-11-26):** `engine/verify.sh` passes on rustc 1.99.0 with Godot 4.7.2: 19 Rust tests, runner-generated traces byte-identical to `dist/` and `engine/viewer/`, all five session summaries, and headless Godot validation (which rejects swapped or v1 traces). The tests also pass on rustc 1.73.0. `node checks.mjs` passes. The browser console was exercised at desktop and phone widths. **Not verified:** the declared Rust 1.65 minimum itself, GPU rendering, TLA+ model checking, and real agent data. The sessions are scripted, so the traces are not measured experiment outcomes.
+**Verified so far (2026-11-26):** `engine/verify.sh` passes on rustc 1.99.0 with Godot 4.7.2: 35 Rust tests, golden simulation reports and the shrunk replay, runner-generated traces byte-identical to `dist/` and `engine/viewer/`, all five session summaries, and headless Godot validation (which rejects swapped or v1 traces). The tests also pass on rustc 1.73.0. `node checks.mjs` passes. The browser console was exercised at desktop and phone widths. **Not verified:** the declared Rust 1.65 minimum itself, GPU rendering, TLA+ model checking, and real agent data. The sessions are scripted, so the traces are not measured experiment outcomes.
 
 ## Keep the two projects separate
 

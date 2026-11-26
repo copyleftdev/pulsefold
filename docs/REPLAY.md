@@ -22,6 +22,7 @@ Input errors exit 2 and name the file and line.
 
     pulsefold trace SESSION     # trace v2 TSV; exit 0 if every row passes, 1 otherwise
     pulsefold summary SESSION   # session summary; exit 0
+    pulsefold sim ...           # seeded simulation; see SIMULATION.md
 
 ## Trace v2
 
@@ -33,7 +34,7 @@ UTF-8 TSV, one row per operation per turn, with exactly this header:
 - `ledger` is the reference's booking list. `index` is what the implementation answers availability from: its room index for `indexed` and `stale-index`, its ledger for `scan` and `rebuild`. Bookings are written `A@C1:600-660`, space-separated, or `none`.
 - The probe windows come from the operation. `original_window` is the moved booking's slot before the operation (`-` for reserves and unknown IDs); `attempted_window` is the requested or attempted window. Both are probed after the operation, by the reference and by the implementation. Availability is `C1`, `C2`, `C1,C2` or `none`.
 - `marker` is `EXACT`, `ABSENT`, `MALFORMED` or `UNOBSERVED`, scored from the turn's response by a port of Canary Lab's `score_marker`. It never reads scheduler state.
-- `verdict` is `PASS` when the result, the booking list and both probes match the reference. `reason` lists each disagreement, or `-` on a pass. The verdict uses only what a black-box evaluator could observe; it does not inspect the index directly.
+- `verdict` is `PASS` when the result, the booking list and both probes match the reference, and, when the two probes agree, a sweep over every interval between consecutive endpoints of the reference's bookings and the operation's windows finds no disagreement either. `reason` lists each disagreement (the sweep reports its first one as `sweep window ...`), or `-` on a pass. The verdict uses only what a black-box evaluator could observe; it does not inspect the index directly.
 
 The v1 trace (11 columns, fixed probe windows, scheduler-written canary) is retired. Both viewers reject it.
 
@@ -45,4 +46,4 @@ Tab-separated `key value` lines: `turns`, `first_observed_noncompliance`, `first
 
 The Rust runner owns every verdict; the viewers read recorded results. An accepted operation, a correctly rejected operation, a passing verdict, an exact marker and an adopted refactor are five different signals. No trace contains real agent output.
 
-`engine/verify.sh` runs the Rust tests, regenerates both viewer traces (control exit 0, fault exit 1) and requires them to match `engine/viewer/` and `dist/` byte for byte, requires every `sessions/*.summary` to match, and validates the traces in Godot when it is installed. `node checks.mjs` checks the browser fixtures and the parser's rejection of malformed rows.
+`engine/verify.sh` runs the Rust tests, checks the simulator's reports, exit codes and shrunk replay against `engine/sim/`, regenerates both viewer traces (control exit 0, fault exit 1) and requires them to match `engine/viewer/` and `dist/` byte for byte, requires every `sessions/*.summary` to match, and validates the traces in Godot when it is installed. `node checks.mjs` checks the browser fixtures and the parser's rejection of malformed rows.

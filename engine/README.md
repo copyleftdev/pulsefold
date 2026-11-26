@@ -20,7 +20,12 @@ Requires Cargo and stable Rust 1.65 or newer. No crate dependencies.
     cargo run --offline -- trace sessions/ghost.session       # exit 1: the planted bug
     cargo run --offline -- summary sessions/ghost.session
 
-Exit codes: 0 when every row matches the reference, 1 when any row fails, 2 for usage or input errors. A correct `CONFLICT` passes: the reference rejects the same move and nothing observable changes.
+Seeded simulation, with shrinking to a replayable assay ([guide](../docs/SIMULATION.md)):
+
+    cargo run --offline -- sim --variant stale-index --seed 1 --runs 1000 --ops 64 --shrink-to /tmp/pf
+    cargo run --offline -- trace /tmp/pf/seed-2.session
+
+Exit codes: 0 when every row matches the reference, 1 when any row fails, 2 for usage or input errors; `sim` also exits 3 when nothing failed but a sometimes-property never fired. A correct `CONFLICT` passes: the reference rejects the same move and nothing observable changes.
 
 To feed freshly generated traces to the native console:
 
