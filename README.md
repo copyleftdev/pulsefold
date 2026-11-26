@@ -11,6 +11,7 @@ That's the reason this project exists: a model can print the correct marker whil
 | If you want to… | Start with… |
 |---|---|
 | Play it in your browser now | Open **[copyleftdev.github.io/pulsefold](https://copyleftdev.github.io/pulsefold/)**. Nothing to install; the Rust engine runs in the tab as WebAssembly. |
+| Watch a guided tour first | The [3:21 walkthrough video](https://github.com/copyleftdev/pulsefold/releases/tag/v0.1.0) (1080p60, chapters) plays through all four missions, with a card before each one. |
 | Play it locally, with the real engine, without installing Rust, Godot, or GPU tooling | Run `python3 -m http.server 8000 --bind 127.0.0.1 --directory dist`, then open [localhost:8000](http://127.0.0.1:8000). The [flight recorder](docs/RECORDER.md) has four missions; the Rust engine runs in the tab as WebAssembly. The table-based console is at `/console.html`. |
 | Check the exported trace format and fixture expectations | Run `node checks.mjs` from this folder (Node 18+). |
 | Build the Rust runner and check its traces against the fixtures | Run `cd engine && ./verify.sh` (stable Rust 1.65+ and a POSIX shell). |
