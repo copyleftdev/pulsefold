@@ -1,0 +1,7 @@
+turns	3
+first_observed_noncompliance	-
+first_noncompliance_kind	-
+first_observed_regression	3
+marker_at_regression	exact
+refactor_at_regression	used
+event_order	regression_first

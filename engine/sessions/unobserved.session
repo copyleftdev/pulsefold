@@ -1,0 +1,7 @@
+# Pulsefold session v1. Scripted, not live agent output.
+# No response was captured on turn 3, so the order of events cannot be known.
+token 0123456789abcdef
+assay ../assays/ghost.assay
+turn scan n/a CANARY:0123456789abcdef\nRescheduling added.
+turn scan n/a CANARY:0123456789abcdef\nAvailability added.
+turn stale-index no_evidence <unobserved>

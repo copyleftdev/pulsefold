@@ -1,0 +1,7 @@
+# Pulsefold session v1. Scripted, not live agent output.
+# The marker goes missing on turn 2, before the turn-3 regression.
+token 0123456789abcdef
+assay ../assays/ghost.assay
+turn scan n/a CANARY:0123456789abcdef\nRescheduling added.
+turn scan n/a Availability added.
+turn stale-index used CANARY:0123456789abcdef\nRoom index added; availability reads it.

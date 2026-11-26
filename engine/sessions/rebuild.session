@@ -1,0 +1,8 @@
+# Pulsefold session v1. Scripted, not live agent output.
+# Turn 3 keeps an index but rebuilds availability from a full scan: behavior holds,
+# the refactor does not count. The session is kept and recorded as not_used.
+token 0123456789abcdef
+assay ../assays/ghost.assay
+turn scan n/a CANARY:0123456789abcdef\nRescheduling added.
+turn scan n/a CANARY:0123456789abcdef\nAvailability added.
+turn rebuild not_used CANARY:0123456789abcdef\nRoom index added.

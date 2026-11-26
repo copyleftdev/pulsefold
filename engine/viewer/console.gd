@@ -5,6 +5,10 @@ const INK := Color("#d6e6ed")
 const MINT := Color("#78f4d0")
 const BAD := Color("#ff806d")
 const DIM := Color("#8cabb9")
+const HEADER := "turn\tstep\tvariant\toperation\texpected\tresult\tledger\tindex\toriginal_window\treference_original\timplementation_original\tattempted_window\treference_attempted\timplementation_attempted\tmarker\trefactor\tverdict\treason"
+const WIDTH := 18
+# Trace v2 columns.
+enum { TURN, STEP, VARIANT, OP, EXPECTED, RESULT, LEDGER, INDEX, OW, RO, IO, AW, RA, IA, MARKER, REFACTOR, VERDICT, REASON }
 var rows: Array[PackedStringArray] = []
 var step := 0
 var mutant := false
@@ -22,10 +26,12 @@ func _ready() -> void:
 	add_button("TOGGLE FAULT", func(): mutant = not mutant; load_trace())
 	load_trace()
 	if "--validate" in OS.get_cmdline_user_args():
-		var normal: bool = rows.size() == 3 and rows[-1][10] == "PASS"
+		var normal: bool = rows.size() == 9 and rows.all(func(r): return r[VERDICT] == "PASS")
 		mutant = true
 		load_trace()
-		var broken: bool = rows.size() == 3 and rows[-1][2] == "CONFLICT" and rows[-1][9] == "EXACT" and rows[-1][10] == "FAIL"
+		var failing := rows.filter(func(r): return r[VERDICT] == "FAIL")
+		var broken: bool = rows.size() == 9 and failing.size() == 1 and failing[0][RESULT] == "CONFLICT" \
+			and failing[0][MARKER] == "EXACT" and failing[0][RO] != failing[0][IO] and failing[0][RA] == failing[0][IA]
 		if normal and broken:
 			print("Viewer loaded both traces successfully.")
 		get_tree().quit(0 if normal and broken else 1)
@@ -52,11 +58,19 @@ func load_trace() -> void:
 			path = arg.trim_prefix(prefix)
 			status_note = "IMPORTED ASSAY TRACE"
 	var raw := FileAccess.get_file_as_string(path)
-	var lines := raw.split("\n", false)
+	var lines := raw.replace("\r\n", "\n").split("\n", false)
+	if lines.is_empty() or lines[0] != HEADER:
+		status_note = "NOT A TRACE V2 FILE"
+		queue_redraw()
+		return
 	for i in range(1, lines.size()):
-		var fields := lines[i].strip_edges().split("\t", true)
-		if fields.size() == 11:
+		var fields := lines[i].split("\t", true)
+		if fields.size() == WIDTH and fields[STEP] == str(i):
 			rows.append(fields)
+		else:
+			rows.clear()
+			status_note = "MALFORMED TRACE ROW %d" % i
+			break
 	queue_redraw()
 
 func txt(content: String, x: float, y: float, px: int, color: Color = INK) -> void:
@@ -76,16 +90,17 @@ func _draw() -> void:
 		txt("No usable trace loaded.", 40, 195, 23, BAD)
 		return
 	var row := rows[step]
-	var failed := row[10] == "FAIL"
-	txt("STEP %s / %d     %s     >     %s" % [row[0], rows.size(), row[1], row[2]], 40, 190, 22)
-	panel(38, 224, "CANONICAL CHAMBER LEDGER")
-	panel(525, 224, "CONSOLE CHAMBER INDEX")
-	txt(row[3], 58, 298, 20)
-	txt(row[4], 545, 298, 20, BAD if failed else INK)
-	txt("Availability 615–645     " + row[5], 58, 327, 17)
-	txt("Availability 615–645     " + row[6], 545, 327, 17, BAD if row[5] != row[6] else INK)
-	txt("Availability 780–795     " + row[7], 58, 350, 17)
-	txt("Availability 780–795     " + row[8], 545, 350, 17, BAD if row[7] != row[8] else INK)
-	txt("SCRIPTED CANARY    " + row[9], 40, 430, 20, MINT)
-	txt("INDEPENDENT VERDICT    " + row[10], 527, 430, 20, BAD if failed else MINT)
-	txt("The canary can be exact while the chamber display is wrong.", 40, 484, 22, DIM)
+	var failed := row[VERDICT] == "FAIL"
+	txt("TURN %s  %s   STEP %s / %d     %s     >     %s" % [row[TURN], row[VARIANT], row[STEP], rows.size(), row[OP], row[RESULT]], 40, 190, 20)
+	panel(38, 224, "REFERENCE LEDGER")
+	panel(525, 224, "IMPLEMENTATION ANSWERS FROM")
+	txt(row[LEDGER], 58, 298, 20)
+	txt(row[INDEX], 545, 298, 20, BAD if row[INDEX] != row[LEDGER] else INK)
+	if row[OW] != "-":
+		txt("Original " + row[OW] + "     " + row[RO], 58, 327, 17)
+		txt("Original " + row[OW] + "     " + row[IO], 545, 327, 17, BAD if row[RO] != row[IO] else INK)
+	txt("Attempted " + row[AW] + "     " + row[RA], 58, 350, 17)
+	txt("Attempted " + row[AW] + "     " + row[IA], 545, 350, 17, BAD if row[RA] != row[IA] else INK)
+	txt("CANARY  " + row[MARKER] + "     REFACTOR  " + row[REFACTOR], 40, 430, 20, MINT)
+	txt("INDEPENDENT VERDICT    " + row[VERDICT], 527, 430, 20, BAD if failed else MINT)
+	txt(row[REASON] if failed else "The canary can be exact while the chamber display is wrong.", 40, 484, 18 if failed else 22, BAD if failed else DIM)

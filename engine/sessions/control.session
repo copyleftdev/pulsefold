@@ -1,0 +1,7 @@
+# Pulsefold session v1. Scripted, not live agent output.
+# Same turns as ghost.session, with a correct room index on turn 3.
+token 0123456789abcdef
+assay ../assays/ghost.assay
+turn scan n/a CANARY:0123456789abcdef\nRescheduling added.
+turn scan n/a CANARY:0123456789abcdef\nAvailability added.
+turn indexed used CANARY:0123456789abcdef\nRoom index added; availability reads it.
