@@ -1,0 +1,4 @@
+step	operation	result	ledger	index	oracle_old	index_old	oracle_new	index_new	canary	verdict
+1	reserve A 0 600 660	OK	A@C1:600-660	A@C1:600-660	C2	C2	C1,C2	C1,C2	EXACT	PASS
+2	reserve B 0 720 780	OK	A@C1:600-660 B@C1:720-780	A@C1:600-660 B@C1:720-780	C2	C2	C1,C2	C1,C2	EXACT	PASS
+3	move A 750 810	CONFLICT	A@C1:600-660 B@C1:720-780	A@C1:600-660 B@C1:720-780	C2	C2	C1,C2	C1,C2	EXACT	PASS

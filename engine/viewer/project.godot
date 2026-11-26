@@ -1,0 +1,12 @@
+config_version=5
+[application]
+config/name="Pulsefold: The Ghost Cycle"
+run/main_scene="res://main.tscn"
+[display]
+window/size/viewport_width=1040
+window/size/viewport_height=650
+window/stretch/mode="canvas_items"
+[rendering]
+renderer/rendering_method="mobile"
+rendering_device/driver.linuxbsd="vulkan"
+rendering_device/driver.windows="vulkan"

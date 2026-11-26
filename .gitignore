@@ -1,0 +1,6 @@
+/engine/target/
+/engine/viewer/.godot/
+__pycache__/
+.DS_Store
+.env
+.env.*

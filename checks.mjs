@@ -1,0 +1,17 @@
+import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {parse,firstFailure,seek,domain,header} from './dist/replay.mjs';
+const a=readFileSync('dist/control.tsv','utf8'),b=readFileSync('dist/mutant.tsv','utf8');
+const control=parse(a),mutant=parse(b);
+assert.deepEqual(control.slice(0,2),mutant.slice(0,2));
+assert.equal(firstFailure(control),-1);assert.equal(firstFailure(mutant),2);
+assert.equal(mutant[2].result,'CONFLICT');assert.equal(mutant[2].marker,'EXACT');
+assert.deepEqual(mutant[2].ledger,control[2].ledger);
+assert.notDeepEqual(mutant[2].ledger,mutant[2].index);
+assert.deepEqual([mutant[2].oldL,mutant[2].oldI,mutant[2].newL,mutant[2].newI],['C2','C1,C2','C1,C2','C2']);
+assert.deepEqual(domain(mutant),[600,840]);assert.equal(seek(mutant,8),2);assert.equal(seek(mutant,-8),0);
+assert.throws(()=>parse(b.replace('A@C1:600-660','<svg>')));
+assert.throws(()=>parse(b.replace('EXACT','WRONG')));
+assert.throws(()=>parse(header));
+assert.deepEqual(parse(b.replaceAll('\n','\r\n')),mutant);
+console.log('Replay contract checks passed.');

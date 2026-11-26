@@ -1,0 +1,4 @@
+# Assay v1: integer mission ticks, half-open windows.
+reserve A 0 600 660
+reserve B 0 720 780
+move A 750 810
