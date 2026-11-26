@@ -98,7 +98,7 @@ button.icon[aria-pressed=true]{color:var(--cyan);border-color:rgba(140,216,248,.
 .title-inner h1{font-size:clamp(3rem,10vw,7rem);letter-spacing:-.06em;line-height:.95;margin:0;text-shadow:0 0 40px rgba(140,216,248,.18)}
 .title-inner h1 span{color:var(--cyan)}
 .lede{color:var(--mist);font-size:clamp(1rem,1.8vw,1.15rem);max-width:58ch;margin:14px auto 0}
-.missions{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:34px 0 22px;text-align:left}
+.missions{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:34px 0 22px;text-align:left}
 .mission-card{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:18px;min-height:190px;font-weight:400;text-align:left;transition:transform .35s var(--ease),border-color .2s,box-shadow .3s}
 .mission-card:hover:not(:disabled){transform:translateY(-4px);box-shadow:0 18px 40px rgba(5,10,14,.45),0 0 0 1px rgba(140,216,248,.35)}
 .mission-card i{font:700 .75rem var(--mono);color:var(--cyan);font-style:normal;letter-spacing:.14em}
@@ -121,7 +121,40 @@ button.big{min-height:48px;padding:10px 26px;font-size:1rem;letter-spacing:.04em
 .scan b{display:block;font-size:clamp(2.4rem,7vw,4.6rem);color:var(--frost);letter-spacing:.02em;text-shadow:0 0 24px rgba(140,216,248,.35)}
 .scan span{display:block;color:var(--mist);font:.8rem var(--mono);letter-spacing:.1em;margin-top:4px}
 
+/* Multiverse */
+#field{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+.mv{position:absolute;top:80px;left:12px;width:272px;max-height:calc(100vh - 92px);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.mv .seg-group{align-self:flex-start}
+.field-row{display:flex;flex-direction:column;gap:4px;font:600 .68rem var(--mono);letter-spacing:.12em;color:var(--mist)}
+.field-row select{background:var(--track);color:var(--frost);border:1px solid var(--line);border-radius:8px;min-height:40px;padding:6px 10px;font:.9rem var(--mono)}
+.field-row select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.mv-stats{font:.8rem/1.5 var(--mono);color:var(--mist)}
+.mv-stats b{display:block;font:700 1.6rem var(--sans);color:var(--frost)}
+.mv-stats b.coral{color:var(--coral)}
+.mv-coverage{display:flex;flex-direction:column;gap:5px}
+.cov-h{font:600 .68rem var(--mono);letter-spacing:.12em;color:var(--mist);margin-top:4px}
+.cov{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font:.7rem var(--mono);color:var(--mist)}
+.cov i{grid-column:1/-1;height:3px;border-radius:2px;background:var(--lift);position:relative;overflow:hidden}
+.cov i::after{content:"";position:absolute;inset:0;width:var(--w);background:var(--frost);opacity:.8;transition:width .4s var(--ease)}
+#mv-failing[aria-pressed=true]{background:var(--coral);border-color:var(--coral);color:var(--track)}
+.mv-detail{position:absolute;top:80px;right:12px;width:320px;max-height:calc(100vh - 92px);overflow-y:auto;padding:16px;animation:slidein .35s var(--ease) both}
+@keyframes slidein{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.mv-detail h2{margin:0 0 2px;font-size:1.5rem;letter-spacing:-.02em}
+.mv-detail .out{font-weight:650;margin:2px 0 12px}
+.mv-detail .out.coral{color:var(--coral)}.mv-detail .out.mint{color:var(--mint)}
+.mv-detail dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0 0 12px;font:.82rem var(--mono)}
+.mv-detail dt{color:var(--mist)}.mv-detail dd{margin:0;color:var(--frost)}
+.mv-detail ul{list-style:none;margin:0 0 14px;padding:0;font:.78rem/1.6 var(--mono);color:var(--mist)}
+.mv-detail li.on{color:var(--frost)}
+.mv-detail li::before{content:"·  ";color:var(--line)}
+.mv-detail li.on::before{content:"✓ ";color:var(--frost)}
+.mv-detail .k{font:600 .68rem var(--mono);letter-spacing:.14em;color:var(--mist);margin:0 0 6px}
+.mv-detail .acts{display:flex;gap:8px;flex-wrap:wrap}
+.tip{position:fixed;z-index:6;pointer-events:none;padding:7px 10px;font:.75rem/1.4 var(--mono);color:var(--frost);border-radius:8px;white-space:nowrap}
+.tip .coral{color:var(--coral)}
+
 /* Narrow screens: instruments move under the dial; the log hides. */
+@media (max-width:1180px){.missions{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:1100px){.log{display:none}.caption{width:min(720px,calc(100% - 290px))}}
 @media (max-width:760px){
   .bar{top:8px;left:8px;right:8px;height:48px;gap:8px}
@@ -133,6 +166,8 @@ button.big{min-height:48px;padding:10px 26px;font-size:1rem;letter-spacing:.04em
   .ctl button{min-width:40px;padding:6px 8px}
   .extra{margin-left:0;width:100%}
   .missions{grid-template-columns:1fr}.mission-card{min-height:0}
+  .mv{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-height:42vh}
+  .mv-detail{top:auto;bottom:8px;left:8px;right:8px;width:auto;max-height:56vh;z-index:5}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 body.still *,body.still *::before,body.still *::after{animation-duration:.01ms!important;transition-duration:.01ms!important}

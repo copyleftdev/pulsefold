@@ -21,6 +21,9 @@ The habitat is seen from above. Mission time wraps clockwise around a dial; cham
 1. **The Ghost Cycle** (scripted): the packaged three-turn session. Toggle the fault and the control.
 2. **Seed Hunt** (live): pick a planted bug or the correct index. The engine searches seeds in chunks of 50, shrinks the first failure and replays it. A correct implementation reports a clean sweep of 5000 seeds.
 3. **Race Condition** (live): search seeds for a non-linearizable interleaving, autoplay it, and stop on the torn read. **Apply lock** replays the same interleaving with every operation holding the lock.
+4. **Multiverse** (live): run 250, 500 or 1000 seeds at once, for any simulation implementation or race variant. Each universe is an orb: a coral core with a fine ring if the bug surfaced, slate if it held; the thin arc around it is the share of sometimes-properties it reached (all of them, segment by segment, on hover or selection). **Arrange by** regroups the orbs by a swarm knob or by outcome, with a failure count and rate bar per group, so you can see which parameters find a bug. **Failing universes only** dims the rest. Click a universe, or use the arrow keys and Enter, to see its knobs, outcome and properties, and **Replay in recorder** to watch it (shrunk first if it failed); **Back to multiverse** keeps the field as it was.
+
+The multiverse uses the engine's `universes` request, one row per seed with no shrinking, so 1000 universes come back in about 0.1 s. A Rust test checks that the rows add up to the aggregate `sim` and `race` reports.
 
 ## Motion rules
 
@@ -28,7 +31,7 @@ From the visual direction: motion never carries data. Every settled frame holds 
 
 ## Keys
 
-`1`–`3` missions · `←`/`→` step · `Space` play · `Home` rewind · `F` first failure · `Esc` missions · `M` sound.
+`1`–`4` missions · `←`/`→` step · `Space` play · `Home` rewind · `F` first failure · `Esc` back one level · `M` sound. In the multiverse, arrow keys move between universes on screen and `Enter` replays the selected one.
 
 ## Code
 
@@ -36,3 +39,4 @@ From the visual direction: motion never carries data. Every settled frame holds 
 - `scene.mjs`: the canvas renderer. Arcs glide between frames; the canvas only animates while something moves.
 - `fx.mjs`: easing, motion preference, sound.
 - `game.mjs`: missions, searches, playback, HUD and keys.
+- `field.mjs` and `multiverse.mjs`: the multiverse renderer and its controls.

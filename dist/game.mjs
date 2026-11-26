@@ -5,6 +5,7 @@ import {load,SEP} from './engine.mjs';
 import {traceFrames,raceFrames,domainOf,clock} from './frames.mjs';
 import {Scene} from './scene.mjs';
 import {Sound,prefersReducedMotion} from './fx.mjs';
+import {initMultiverse} from './multiverse.mjs';
 
 const $=id=>document.getElementById(id);
 const scene=new Scene($('world'));
@@ -32,8 +33,9 @@ const RACES=[
 ];
 
 /* ---------- Motion and sound preferences ---------- */
+const stillListeners=[];
 function setStill(on){
-  S.reduced=on;store.set('still',on?'1':'0');scene.setReduced(on);
+  S.reduced=on;store.set('still',on?'1':'0');scene.setReduced(on);for(const f of stillListeners)f(on);
   document.body.classList.toggle('still',on);$('motion').setAttribute('aria-pressed',String(!on));
 }
 setStill(S.reduced);
@@ -55,7 +57,7 @@ function banner(title,sub,tone='coral'){
 
 /* ---------- Screens ---------- */
 function showOnly(...ids){
-  for(const id of ['title','setup','scan','cards','logbox','caption','transport'])$(id).hidden=!ids.includes(id);
+  for(const id of ['title','setup','scan','cards','logbox','caption','transport','mv-panel','mv-detail','mv-tip','field'])$(id).hidden=!ids.includes(id);
 }
 function toTitle(){
   stop();S.mission=null;S.frames=[];showOnly('title');scene.setMode('title');scene.scan(false);
@@ -70,6 +72,9 @@ function startMission(m){
   if(m==='ghost')return startGhost();
   if(m==='hunt')return setup('hunt');
   if(m==='race')return setup('race');
+  if(m==='multiverse'){stop();S.mission='multiverse';S.back=null;scene.setMode('void');
+    $('mission-name').textContent='Multiverse';$('mission-chip').textContent='LIVE ENGINE';$('mission-chip').className='chip live';$('meta').textContent='';
+    return multiverse.start()}
 }
 
 function setup(kind){
@@ -144,6 +149,7 @@ async function search(kind,variant,limit,chunk,request){
 
 async function launchHunt(){
   if(!S.engine||S.busy)return;
+  S.back=null;
   const v=S.hunt.variant;
   const r=await search('hunt',v,5000,50,(seed,n)=>`sim ${v} ${seed} 48 ${n}`);
   if(!r)return;
@@ -178,7 +184,7 @@ async function launchRace(){
     $('scan-label').textContent='SHRINKING';$('scan-sub').textContent='micro-steps in the smallest failing interleaving';$('scan').hidden=false;
     await wait(900);
   }
-  S.race.file=r.payload;S.race.seed=r.seed;
+  S.race.file=r.payload;S.race.seed=r.seed;S.back=null;
   replayRace(r.payload,{autoplay:true});
 }
 
@@ -196,7 +202,10 @@ function replayRace(file,{autoplay=false}={}){
       b.className=S.race.locked?'':'primary';
       b.title=canLock?'Replay the same interleaving with every operation holding the lock':'Already locked';
       b.onclick=()=>{S.race.locked=!S.race.locked;const f=S.race.locked?S.race.file.replace(/^variant .*$/m,'variant locked'):S.race.file;replayRace(f,{autoplay:true})};
-      const again=document.createElement('button');again.textContent='New search';again.className='ghost';again.onclick=()=>setup('race');
+      const again=document.createElement('button');
+      if(S.back){again.textContent='Back to multiverse';again.onclick=()=>{stop();S.back()}}
+      else{again.textContent='New search';again.onclick=()=>setup('race')}
+      again.className='ghost';
       return [b,again];
     }});
 }
@@ -209,7 +218,11 @@ function play(frames,opts={}){
   scene.setMode(S.mission);scene.setDomain(domainOf(frames));
   buildScrub();
   const extra=$('extra');extra.replaceChildren(...(opts.extra?opts.extra():[]));
-  if(S.mission==='hunt'){const b=document.createElement('button');b.textContent='New hunt';b.className='ghost';b.onclick=()=>setup('hunt');extra.append(b)}
+  if(S.mission==='hunt'){
+    const b=document.createElement('button');b.className='ghost';
+    if(S.back){b.textContent='Back to multiverse';b.onclick=()=>{stop();S.back()}}else{b.textContent='New hunt';b.onclick=()=>setup('hunt')}
+    extra.append(b);
+  }
   goto(0,{cue:false});
   if(opts.autoplay)start();
   $('t-play').focus({preventScroll:true});
@@ -311,9 +324,14 @@ addEventListener('keydown',e=>{
   const el=e.target instanceof Element?e.target:null;
   if(el?.closest('input,textarea,select'))return;
   const playing=!$('transport').hidden;
-  if(e.key==='Escape'){toTitle();return}
+  if(e.key==='Escape'){
+    if(!$('mv-detail').hidden){$('mv-detail').querySelector('button.ghost')?.click();return}
+    if(S.back&&S.mission!=='multiverse'){stop();S.back();return}
+    toTitle();return;
+  }
   if(e.key==='m'||e.key==='M'){$('sound').click();return}
-  if(!$('title').hidden&&['1','2','3'].includes(e.key)){startMission(['ghost','hunt','race'][+e.key-1]);return}
+  if(!$('title').hidden&&['1','2','3','4'].includes(e.key)){startMission(['ghost','hunt','race','multiverse'][+e.key-1]);return}
+  if(S.mission==='multiverse'&&!$('field').hidden)return;
   if(!playing)return;
   if(e.key==='ArrowRight'){e.preventDefault();$('t-step').click()}
   else if(e.key==='ArrowLeft'){e.preventDefault();$('t-back').click()}
@@ -322,6 +340,15 @@ addEventListener('keydown',e=>{
   else if(e.key==='f'||e.key==='F'){$('t-fail').click()}
 });
 
+const multiverse=initMultiverse({
+  engine:()=>S.engine,sound,banner,
+  onStill:f=>{stillListeners.push(f);f(S.reduced)},
+  showScreen(){stop();S.mission='multiverse';showOnly('mv-panel');scene.setMode('void');
+    $('mission-name').textContent='Multiverse';$('mission-chip').textContent='LIVE ENGINE';$('mission-chip').className='chip live';$('meta').textContent=''},
+  playTrace(raw,{meta,back}){S.mission='hunt';S.back=back;play(traceFrames(parse(raw)),{huntMeta:meta,autoplay:true})},
+  playRace(file,seed,{back}){S.mission='race';S.back=back;S.race.file=file;S.race.seed=seed;S.race.locked=false;
+    replayRace(file,{autoplay:true})},
+});
 toTitle();
 engineReady.then(()=>{});
 export {S,clock};

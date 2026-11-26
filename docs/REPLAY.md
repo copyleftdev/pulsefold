@@ -44,7 +44,7 @@ Tab-separated `key value` lines: `turns`, `first_observed_noncompliance`, `first
 
 ## Live engine
 
-`dist/pulsefold.wasm` is the same Rust engine built for `wasm32-unknown-unknown` with no dependencies and no imports. `dist/engine.mjs` loads it and exposes its text API (`engine/src/api.rs`): `sim VARIANT SEED OPS RUNS`, `race VARIANT SEED RUNS`, and `replay` followed by a `.race` file. The console's Live engine section uses it to search seeds, load shrunk failures into the replay console, and step through races. `pulsefold api < REQUEST` runs the same API natively; `engine/parity.mjs` requires byte-identical answers.
+`dist/pulsefold.wasm` is the same Rust engine built for `wasm32-unknown-unknown` with no dependencies and no imports. `dist/engine.mjs` loads it and exposes its text API (`engine/src/api.rs`): `sim VARIANT SEED OPS RUNS`, `race VARIANT SEED RUNS`, `replay` followed by a `.race` file, and `universes sim VARIANT FIRST COUNT OPS` / `universes race VARIANT FIRST COUNT` (one row per seed, for the multiverse). The console's Live engine section uses it to search seeds, load shrunk failures into the replay console, and step through races. `pulsefold api < REQUEST` runs the same API natively; `engine/parity.mjs` requires byte-identical answers.
 
 Rebuild after engine changes:
 

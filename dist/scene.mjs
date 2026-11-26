@@ -44,7 +44,7 @@ export class Scene{
   angle(t){const [lo,hi]=this.domain;return START+(t-lo)/(hi-lo)*SWEEP}
   radius(room){const g=this.geometry();return room===1?g.r1:g.r2}
 
-  setMode(mode){this.mode=mode;if(mode==='title'){this.frame=null;this.items.clear()}this.request()}
+  setMode(mode){this.mode=mode;if(mode==='title'||mode==='void'){this.frame=null;this.items.clear();this.fx=[];this.particles=[]}this.request()}
   setDomain(d){this.domain=d;this.request()}
 
   /** Shows a frame: arcs glide to their new places; `cue` adds decoration for this step. */
@@ -111,11 +111,13 @@ export class Scene{
     // Shake.
     if(now<this.shakeUntil&&!this.reduced){ctx.translate((Math.random()-.5)*this.shakeAmp*2,(Math.random()-.5)*this.shakeAmp*2);busy=true}
     this.background(ctx,now,ambient);
-    this.dial(ctx);
-    if(this.frame){this.probes(ctx);this.arcs(ctx);if(this.frame.kind==='micro')this.drones(ctx,now)}
-    this.hub(ctx,now);
+    if(this.mode!=='void'){
+      this.dial(ctx);
+      if(this.frame){this.probes(ctx);this.arcs(ctx);if(this.frame.kind==='micro')this.drones(ctx,now)}
+      this.hub(ctx,now);
+    }
     // Labels after the hub and every band, so nothing covers them.
-    if(this.frame)for(const draw of this.pending??[])draw();
+    if(this.frame&&this.mode!=='void')for(const draw of this.pending??[])draw();
     busy=this.effects(ctx,now,dt)||busy;
     if(this.scanning)this.scanBeam(ctx,.28);
     else if(this.mode==='title'&&!this.reduced)this.scanBeam(ctx,.07);
@@ -335,6 +337,7 @@ export class Scene{
         const a=START+SWEEP*ease.inOut(p);
         for(const r of [g.r1,g.r2]){ctx.strokeStyle=rgba(e.color,.55*(1-p*.6));ctx.lineWidth=g.bw*.35;ctx.beginPath();ctx.arc(this.cx,this.cy,r,START,a);ctx.stroke()}
       }else if(e.type==='beam'){
+        if(!this.frame||this.frame.kind!=='micro')return false;
         const d=this.dronePos(e.client),a0=this.angle(e.lo),a1=this.angle(e.hi),am=(a0+a1)/2,tr=g.r2+g.bw/2;
         ctx.strokeStyle=rgba(e.color,(1-p)*.9);ctx.lineWidth=1.5;ctx.setLineDash(e.solid?[]:[4,4]);
         ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(this.cx+Math.cos(am)*tr,this.cy+Math.sin(am)*tr);ctx.stroke();ctx.setLineDash([]);

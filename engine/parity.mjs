@@ -12,6 +12,7 @@ const requests = [
   'sim stale-index 1 48 200', 'sim indexed 1 48 200', 'sim closed-interval 7 64 50', 'sim scan 3 16 1',
   'race check-then-act 1 1000', 'race torn-move 1 1000', 'race locked 1 200', 'race locked-writes 9 1',
   'replay\n' + race, 'replay\n' + race.replace('variant torn-move', 'variant locked'),
+  'universes sim stale-index 1 300 48', 'universes sim indexed 40 50 64', 'universes race torn-move 1 600', 'universes race locked 1 100',
   'sim nope 1 1 1', 'replay\nvariant locked', '',
 ];
 const expected = requests.map(r => {

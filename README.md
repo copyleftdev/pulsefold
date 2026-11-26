@@ -20,7 +20,7 @@ That's the reason this project exists: a model can print the correct marker whil
 | Use the optional native console | Open `engine/viewer/project.godot` in Godot 4. See [native setup](engine/README.md). |
 | Pick up the next engineering task | Read [the project brief](docs/EXPERIMENT.md) and [the replay contract](docs/REPLAY.md). |
 
-In the flight recorder, **The Ghost Cycle** steps through the scripted session on an orbital dial, **Seed Hunt** lets the engine find, shrink and replay a planted bug, and **Race Condition** stops on a torn read between two clients, then replays the same interleaving with the lock applied.
+In the flight recorder, **The Ghost Cycle** steps through the scripted session on an orbital dial, **Seed Hunt** lets the engine find, shrink and replay a planted bug, and **Race Condition** stops on a torn read between two clients, then replays the same interleaving with the lock applied, and **Multiverse** runs hundreds of seeded universes at once so you can see which ones break, which properties each reached, and which swarm knobs matter, then drill into any one.
 
 In the classic console (`console.html`), choose **First failure** in **Stale index** mode, then choose **Control** and step through the same move. Both reject the move. Only the fault shows the ghost booking and fails the independent check, and only the original-window probe catches it. **Export replay** downloads the current trace. **Import TSV** reads a compatible file locally; it labels imported verdicts as recorded, not independently verified.
 

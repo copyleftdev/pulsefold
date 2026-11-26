@@ -11,6 +11,7 @@
 </head>
 <body>
 <canvas id="world" aria-hidden="true"></canvas>
+<canvas id="field" hidden aria-label="Universes: one orb per seed; use the arrow keys to move between them and Enter to replay one"></canvas>
 <div id="hud">
   <header class="bar glass">
     <button id="home" class="brand" aria-label="Back to missions"><svg width="30" height="16" viewBox="0 0 32 18" aria-hidden="true"><path d="M8 9H26" stroke="#8CD8F8"/><circle cx="8" cy="9" r="6" fill="#8CD8F8"/><circle cx="26" cy="9" r="3" fill="#8DE7B5"/></svg><span>PULSEFOLD</span></button>
@@ -64,8 +65,9 @@
         <button class="mission-card glass" data-mission="ghost"><i>01</i><b>The Ghost Cycle</b><span>Three scripted turns. The move is rejected; the index moves anyway; the canary stays exact.</span><em class="chip">SCRIPTED</em></button>
         <button class="mission-card glass" data-mission="hunt"><i>02</i><b>Seed Hunt</b><span>Plant a bug in the room index and let seeded simulation find it, shrink it, and replay it.</span><em class="chip live">LIVE ENGINE</em></button>
         <button class="mission-card glass" data-mission="race"><i>03</i><b>Race Condition</b><span>Two clients, one lock. Catch a torn read mid-flight, then apply the lock and watch it hold.</span><em class="chip live">LIVE ENGINE</em></button>
+        <button class="mission-card glass" data-mission="multiverse"><i>04</i><b>Multiverse</b><span>Run hundreds of seeded universes at once. See which ones break, which corners each reached, and which knobs matter.</span><em class="chip live">LIVE ENGINE</em></button>
       </div>
-      <p class="foot">Keys: 1–3 missions · ←/→ step · Space play · F first failure · Esc missions · M sound. <a href="console.html">Classic console</a></p>
+      <p class="foot">Keys: 1–4 missions · ←/→ step · Space play · F first failure · Esc missions · M sound. <a href="console.html">Classic console</a></p>
     </div>
   </section>
 
@@ -78,6 +80,20 @@
       <div class="setup-row"><button id="launch" class="primary big">Launch</button><button id="setup-back" class="ghost">Missions</button></div>
     </div>
   </section>
+
+  <aside id="mv-panel" class="mv glass" hidden aria-label="Multiverse controls">
+    <p class="eyebrow">MISSION 04 · MULTIVERSE</p>
+    <div class="seg-group" role="group" aria-label="Engine"><button id="mv-sim" class="seg" aria-pressed="true">Simulation</button><button id="mv-race" class="seg" aria-pressed="false">Race</button></div>
+    <label class="field-row">Implementation<select id="mv-variant"></select></label>
+    <label class="field-row">Universes<select id="mv-count"><option>250</option><option selected>500</option><option>1000</option></select></label>
+    <button id="mv-launch" class="primary">Run universes</button>
+    <div id="mv-stats" class="mv-stats" aria-live="polite"></div>
+    <div id="mv-coverage" class="mv-coverage"></div>
+    <label class="field-row">Arrange by<select id="mv-arrange"></select></label>
+    <button id="mv-failing" class="seg" aria-pressed="false">Failing universes only</button>
+  </aside>
+  <aside id="mv-detail" class="mv-detail glass" hidden aria-label="Universe details" aria-live="polite"></aside>
+  <div id="mv-tip" class="tip glass" hidden></div>
 
   <section id="scan" class="scan" hidden aria-live="polite">
     <p class="eyebrow" id="scan-label">SCANNING SEEDS</p>
