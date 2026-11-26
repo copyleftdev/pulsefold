@@ -29,4 +29,19 @@ for(const broken of [v1,header,b.replace('A@C1:600-660','<svg>'),b.replace('\tEX
   b.replace('\t600-660\tC2\tC1,C2\t','\t660-600\tC2\tC1,C2\t'),b.replace('\tused\t','\tmaybe\t'),b.replace('\tstale-index\t','\tfast\t')])
   assert.throws(()=>parse(broken));
 assert.deepEqual(parse(b.replaceAll('\n','\r\n')),mutant);
+// The packaged WebAssembly engine reproduces the native golden reports and replays.
+const {load,SEP}=await import('./dist/engine.mjs');
+const engine=await load(readFileSync('dist/pulsefold.wasm'));
+const golden=f=>read('engine/sim/'+f);
+let r=engine.call('sim stale-index 1 48 200');
+assert.equal(r.code,1);assert.equal(r.out.split(SEP)[0],golden('stale-index.expected'));
+const live=parse(r.out.split(SEP)[1]);assert.equal(live.length,3);assert.equal(firstFailure(live),2);
+assert.equal(engine.call('sim indexed 1 48 200').out.split(SEP)[0],golden('indexed.expected'));
+for(const v of ['locked','locked-writes','check-then-act','torn-move']){
+  r=engine.call(`race ${v} 1 1000`);assert.equal(r.out.split(SEP)[0],golden(`race-${v}.expected`),v);
+}
+const raceFile=golden('race-seed-257.race');
+assert.equal(engine.call('replay\n'+raceFile).code,1);
+assert.equal(engine.call('replay\n'+raceFile.replace('variant torn-move','variant locked')).code,0);
+assert.equal(engine.call('fly').code,2);
 console.log('Replay contract checks passed.');

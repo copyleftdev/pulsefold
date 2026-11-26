@@ -6,7 +6,7 @@ use std::fmt;
 
 use crate::assay;
 use crate::catalog::wilson;
-use crate::model::{format_bookings, format_rooms, Bookings, Op, Outcome, Slot, Tick, Window, CHAMBERS};
+use crate::model::{format_bookings, format_entries, format_rooms, sort_entries, Bookings, Op, Outcome, Slot, Tick, Window, CHAMBERS};
 use crate::oracle::elementary;
 use crate::rng::Rng;
 use crate::stores::{Reference, Store};
@@ -233,6 +233,8 @@ pub struct Event {
     pub op: String,
     pub step: &'static str,
     pub note: String,
+    /// The index entries after this step, as `format_entries` writes them.
+    pub index: String,
 }
 
 struct Exec {
@@ -337,7 +339,8 @@ impl Exec {
             Instr::Release => self.shared.lock = None,
             Instr::Done => {}
         }
-        self.events.push(Event { time: t, client: c, op: f.op.to_string(), step: instr.name(), note });
+        let index = sort_entries(self.shared.index.iter().flatten().cloned().collect());
+        self.events.push(Event { time: t, client: c, op: f.op.to_string(), step: instr.name(), note, index: format_entries(&index) });
         if instr == Instr::Done {
             let answer = match f.rooms {
                 Some(r) => Answer::Rooms(r),
@@ -742,10 +745,11 @@ pub fn parse_race(text: &str) -> Result<(RaceVariant, Scenario), String> {
 /// A readable account of one run: every micro-step, then the history and the verdict.
 pub fn narrate(v: RaceVariant, sc: &Scenario) -> String {
     let run = execute(v, sc, false);
-    let mut out = format!("variant\t{}\ntime\tclient\toperation\tstep\tnote\n", v.name());
+    let mut out = format!("variant\t{}\ntime\tclient\toperation\tstep\tnote\tindex\n", v.name());
     for e in &run.events {
         let who = if e.client == 0 { "setup".to_string() } else { e.client.to_string() };
-        out.push_str(&format!("{}\t{who}\t{}\t{}\t{}\n", e.time, e.op, e.step, if e.note.is_empty() { "-" } else { &e.note }));
+        let note = if e.note.is_empty() { "-" } else { &e.note };
+        out.push_str(&format!("{}\t{who}\t{}\t{}\t{note}\t{}\n", e.time, e.op, e.step, e.index));
     }
     out.push_str("history\tclient\toperation\tinvoked\tresponded\tanswer\n");
     for r in &run.history {

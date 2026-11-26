@@ -61,6 +61,22 @@ for f in race-seed-28 race-seed-257; do
   expect 0 "$bin" race --replay "$out/locked.race"
 done
 
+# Browser engine: rebuild for WebAssembly when the target is installed, and require the
+# rebuilt and the packaged builds to answer exactly like the native binary.
+if command -v node >/dev/null 2>&1; then
+  wasms="../dist/pulsefold.wasm"
+  if rustup target list --installed 2>/dev/null | grep -qx wasm32-unknown-unknown; then
+    cargo build --offline --profile wasm --target wasm32-unknown-unknown --lib
+    wasms="$wasms ${CARGO_TARGET_DIR:-target}/wasm32-unknown-unknown/wasm/pulsefold.wasm"
+  else
+    echo "wasm32-unknown-unknown not installed: checking the packaged WebAssembly build only." >&2
+  fi
+  # shellcheck disable=SC2086
+  node parity.mjs "$bin" $wasms
+else
+  echo "Node not found: WebAssembly parity skipped." >&2
+fi
+
 if command -v godot >/dev/null 2>&1; then
   godot --headless --path viewer -- --validate "--control=$out/control.tsv" "--mutant=$out/mutant.tsv"
 elif command -v godot4 >/dev/null 2>&1; then

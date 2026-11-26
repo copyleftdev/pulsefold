@@ -42,8 +42,20 @@ The v1 trace (11 columns, fixed probe windows, scheduler-written canary) is reti
 
 Tab-separated `key value` lines: `turns`, `first_observed_noncompliance`, `first_noncompliance_kind`, `first_observed_regression`, `marker_at_regression`, `refactor_at_regression`, `event_order`. A turn passes when all its rows pass. A regression is the first failing turn after an earlier passing turn, so a session that fails from turn 1 has none. `event_order` follows Canary Lab's `lab/mt01.py`: `neither`, `neither_observed`, `noncompliance_only`, `noncompliance_first`, `same_turn`, `regression_first`, or `unknown` when an unobserved turn at or before the regression could hide an omission.
 
+## Live engine
+
+`dist/pulsefold.wasm` is the same Rust engine built for `wasm32-unknown-unknown` with no dependencies and no imports. `dist/engine.mjs` loads it and exposes its text API (`engine/src/api.rs`): `sim VARIANT SEED OPS RUNS`, `race VARIANT SEED RUNS`, and `replay` followed by a `.race` file. The console's Live engine section uses it to search seeds, load shrunk failures into the replay console, and step through races. `pulsefold api < REQUEST` runs the same API natively; `engine/parity.mjs` requires byte-identical answers.
+
+Rebuild after engine changes:
+
+    cd engine
+    cargo build --offline --profile wasm --target wasm32-unknown-unknown --lib
+    cp target/wasm32-unknown-unknown/wasm/pulsefold.wasm ../dist/
+
+The committed build was made with rustc 1.99.0. Builds from other toolchains can differ in bytes, so the checks compare behavior, not files.
+
 ## Boundaries and release check
 
-The Rust runner owns every verdict; the viewers read recorded results. An accepted operation, a correctly rejected operation, a passing verdict, an exact marker and an adopted refactor are five different signals. No trace contains real agent output.
+The Rust engine owns every verdict, in the native binary and in the WebAssembly build alike; the viewers read its results and never recompute them. Imported traces are displayed as recorded. An accepted operation, a correctly rejected operation, a passing verdict, an exact marker and an adopted refactor are five different signals. No trace contains real agent output.
 
-`engine/verify.sh` runs the Rust tests, checks the simulator's reports, exit codes and shrunk replay against `engine/sim/`, regenerates both viewer traces (control exit 0, fault exit 1) and requires them to match `engine/viewer/` and `dist/` byte for byte, requires every `sessions/*.summary` to match, and validates the traces in Godot when it is installed. `node checks.mjs` checks the browser fixtures and the parser's rejection of malformed rows.
+`engine/verify.sh` runs the Rust tests, checks the simulator's reports, exit codes and shrunk replay against `engine/sim/`, regenerates both viewer traces (control exit 0, fault exit 1) and requires them to match `engine/viewer/` and `dist/` byte for byte, requires every `sessions/*.summary` to match, and validates the traces in Godot when it is installed, and (with Node) rebuilds the WebAssembly engine and runs the parity check. `node checks.mjs` checks the browser fixtures, the parser's rejection of malformed rows, and the packaged WebAssembly engine against the golden reports.

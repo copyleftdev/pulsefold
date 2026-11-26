@@ -12,25 +12,19 @@
 //!     pulsefold race --replay FILE.race
 //!                                  # concurrent clients under a seeded scheduler, checked
 //!                                  # for linearizability; exits like sim
+//!     pulsefold api < REQUEST      # the browser engine's text API, for parity checks
 //!
 //! Exit 2 for usage or input errors.
-mod assay;
-mod catalog;
-mod marker;
-mod model;
-mod oracle;
-mod race;
-mod rng;
-mod session;
-mod sim;
-mod stores;
-
+use std::io::Read;
 use std::{env, fs, path::Path, process::ExitCode};
+
+use pulsefold::{api, assay, catalog, model, race, session, sim, stores};
 
 const USAGE: &str = "usage: pulsefold trace SESSION | pulsefold summary SESSION | \
 pulsefold sim [--variant V] [--seed N] [--runs K] [--ops L] [--shrink-to DIR] | \
 pulsefold catalog [--seed N] [--runs K] [--ops L] | \
-pulsefold race [--variant V] [--seed N] [--runs K] [--shrink-to DIR] | pulsefold race --replay FILE \
+pulsefold race [--variant V] [--seed N] [--runs K] [--shrink-to DIR] | pulsefold race --replay FILE | \
+pulsefold api < REQUEST \
 (exit: 0 pass; 1 failure; 2 input error; 3 weak simulation)";
 
 fn load(path: &str) -> Result<(session::Session, Vec<model::Op>), String> {
@@ -88,6 +82,13 @@ fn run() -> Result<u8, String> {
     let args: Vec<_> = env::args().skip(1).collect();
     match args.as_slice() {
         [c, rest @ ..] if c == "sim" => simulate(rest),
+        [c] if c == "api" => {
+            let mut request = String::new();
+            std::io::stdin().read_to_string(&mut request).map_err(|e| format!("stdin: {e}"))?;
+            let (code, out) = api::call(&request);
+            print!("{out}");
+            Ok(u8::try_from(code).unwrap_or(2))
+        }
         [c, flag, file] if c == "race" && flag == "--replay" => {
             let text = fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
             let (variant, scenario) = race::parse_race(&text).map_err(|e| format!("{file}: {e}"))?;

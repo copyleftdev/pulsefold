@@ -10,7 +10,7 @@ That's the reason this project exists: a model can print the correct marker whil
 
 | If you want to… | Start with… |
 |---|---|
-| Play the scenario without installing Rust, Godot, or GPU tooling | Run `python3 -m http.server 8000 --bind 127.0.0.1 --directory dist`, then open [localhost:8000](http://127.0.0.1:8000). |
+| Play the scenario, or run the engine itself, without installing Rust, Godot, or GPU tooling | Run `python3 -m http.server 8000 --bind 127.0.0.1 --directory dist`, then open [localhost:8000](http://127.0.0.1:8000). The Live engine section runs the Rust engine, compiled to WebAssembly, in the tab. |
 | Check the exported trace format and fixture expectations | Run `node checks.mjs` from this folder (Node 18+). |
 | Build the Rust runner and check its traces against the fixtures | Run `cd engine && ./verify.sh` (stable Rust 1.65+ and a POSIX shell). |
 | Replay a session yourself | `cd engine && cargo run --offline -- trace sessions/ghost.session` or `-- summary sessions/ghost.session`. |
@@ -20,16 +20,18 @@ That's the reason this project exists: a model can print the correct marker whil
 | Use the optional native console | Open `engine/viewer/project.godot` in Godot 4. See [native setup](engine/README.md). |
 | Pick up the next engineering task | Read [the project brief](docs/EXPERIMENT.md) and [the replay contract](docs/REPLAY.md). |
 
-In the browser, choose **First failure** in **Stale index** mode, then choose **Control** and step through the same move. Both reject the move. Only the fault shows the ghost booking and fails the independent check, and only the original-window probe catches it. **Export replay** downloads the current trace. **Import TSV** reads a compatible file locally; it labels imported verdicts as recorded, not independently verified. The browser does not run the Rust scheduler.
+In the browser, choose **First failure** in **Stale index** mode, then choose **Control** and step through the same move. Both reject the move. Only the fault shows the ghost booking and fails the independent check, and only the original-window probe catches it. **Export replay** downloads the current trace. **Import TSV** reads a compatible file locally; it labels imported verdicts as recorded, not independently verified.
+
+Below the console, **Live engine** runs the real Rust engine in the tab. Under **Simulation**, pick a planted bug and search seeds; the shrunk failure loads into the console. Under **Race**, search for a race between concurrent clients and step through the shrunk interleaving client by client, with the index shown after every step. The race file is editable: change `variant torn-move` to `variant locked` and replay to watch the same interleaving become linearizable.
 
 ## What is in this repository?
 
-- `dist/`: buildless browser console; the two runner-generated traces, presentation, and replay controls.
+- `dist/`: buildless browser console: the two runner-generated traces, replay controls, and the live engine (`pulsefold.wasm`, 217 KB, no imports, loaded by `engine.mjs`).
 - `engine/`: dependency-free Rust runner (reference, implementation variants, marker scoring, session summary, seeded simulation with always/sometimes properties and shrinking, deterministic races checked for linearizability), the Ghost Cycle assay, five scripted sessions with expected summaries, golden simulation reports, native Godot viewer, and a verification script.
 - `checks.mjs`: automated browser-data checks for the packaged traces.
 - `docs/`: experiment boundary, replay contract, simulation and race guides, and visual direction.
 
-**Verified so far (2026-11-26):** `engine/verify.sh` passes on rustc 1.99.0 with Godot 4.7.2: 55 Rust tests, golden simulation, catalog and race reports, the shrunk replays, runner-generated traces byte-identical to `dist/` and `engine/viewer/`, all five session summaries, and headless Godot validation (which rejects swapped or v1 traces). The tests also pass on rustc 1.73.0. `node checks.mjs` passes. The browser console was exercised at desktop and phone widths. **Not verified:** the declared Rust 1.65 minimum itself, GPU rendering, TLA+ model checking, and real agent data. The sessions are scripted, so the traces are not measured experiment outcomes.
+**Verified so far (2026-11-26):** `engine/verify.sh` passes on rustc 1.99.0 with Godot 4.7.2: 59 Rust tests, golden simulation, catalog and race reports, the shrunk replays, byte-identical WebAssembly and native output, runner-generated traces byte-identical to `dist/` and `engine/viewer/`, all five session summaries, and headless Godot validation (which rejects swapped or v1 traces). The tests also pass on rustc 1.73.0. `node checks.mjs` passes. The browser console, including the live engine, was exercised at desktop and phone widths. **Not verified:** the declared Rust 1.65 minimum itself, GPU rendering, TLA+ model checking, and real agent data. The sessions are scripted, so the traces are not measured experiment outcomes.
 
 ## Keep the two projects separate
 
